@@ -129,7 +129,11 @@ func main() {
 		config.Current.UI.AutoRefreshInterval = period
 	}
 
-	p := tea.NewProgram(ui.New(appContext, revset), tea.WithAltScreen())
+	if period >= 0 {
+		config.Current.UI.AutoRefreshInterval = period
+	}
+
+	p := tea.NewProgram(ui.New(appContext, revset), tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error running program: %v\n", err)
 		os.Exit(1)
