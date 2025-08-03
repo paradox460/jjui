@@ -57,8 +57,12 @@ func CommitWorkingCopy() CommandArgs {
 	return []string{"commit"}
 }
 
-func Edit(changeId string) CommandArgs {
-	return []string{"edit", "-r", changeId}
+func Edit(changeId string, ignoreImmutable bool) CommandArgs {
+	args := []string{"edit", "-r", changeId}
+	if ignoreImmutable {
+		args = append(args, "--ignore-immutable")
+	}
+	return args
 }
 
 func DiffEdit(changeId string) CommandArgs {
@@ -87,9 +91,12 @@ func GetDescription(revision string) CommandArgs {
 	return []string{"log", "-r", revision, "--template", "description", "--no-graph", "--ignore-working-copy", "--color", "never", "--quiet"}
 }
 
-func Abandon(revision SelectedRevisions) CommandArgs {
+func Abandon(revision SelectedRevisions, ignoreImmutable bool) CommandArgs {
 	args := []string{"abandon", "--retain-bookmarks"}
 	args = append(args, revision.AsArgs()...)
+	if ignoreImmutable {
+		args = append(args, "--ignore-immutable")
+	}
 	return args
 }
 
@@ -214,18 +221,24 @@ func Show(revision string, extraArgs ...string) CommandArgs {
 	return args
 }
 
-func Rebase(from SelectedRevisions, to string, source string, target string) CommandArgs {
+func Rebase(from SelectedRevisions, to string, source string, target string, ignoreImmutable bool) CommandArgs {
 	args := []string{"rebase"}
 	args = append(args, from.AsPrefixedArgs(source)...)
 	args = append(args, target, to)
+	if ignoreImmutable {
+		args = append(args, "--ignore-immutable")
+	}
 	return args
 }
 
-func RebaseInsert(from SelectedRevisions, insertAfter string, insertBefore string) CommandArgs {
+func RebaseInsert(from SelectedRevisions, insertAfter string, insertBefore string, ignoreImmutable bool) CommandArgs {
 	args := []string{"rebase"}
 	args = append(args, from.AsArgs()...)
 	args = append(args, "--insert-before", insertBefore)
 	args = append(args, "--insert-after", insertAfter)
+	if ignoreImmutable {
+		args = append(args, "--ignore-immutable")
+	}
 	return args
 }
 

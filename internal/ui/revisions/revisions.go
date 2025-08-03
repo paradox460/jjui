@@ -326,7 +326,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			case key.Matches(msg, m.keymap.Commit):
 				cmd = m.context.RunInteractiveCommand(jj.CommitWorkingCopy(), common.Refresh)
 			case key.Matches(msg, m.keymap.Edit):
-				cmd = m.context.RunCommand(jj.Edit(m.SelectedRevision().GetChangeId()), common.Refresh)
+				ignoreImmutable := msg.Alt
+				cmd = m.context.RunCommand(jj.Edit(m.SelectedRevision().GetChangeId(), ignoreImmutable), common.Refresh)
 			case key.Matches(msg, m.keymap.Diffedit):
 				changeId := m.SelectedRevision().GetChangeId()
 				cmd = m.context.RunInteractiveCommand(jj.DiffEdit(changeId), common.Refresh)

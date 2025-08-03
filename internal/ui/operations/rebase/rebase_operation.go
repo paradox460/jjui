@@ -84,12 +84,13 @@ func (r *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 		r.Target = TargetInsert
 		r.InsertStart = r.To
 	case key.Matches(msg, r.keyMap.Apply):
+		ignoreImmutable := msg.Alt
 		if r.Target == TargetInsert {
-			return r.context.RunCommand(jj.RebaseInsert(r.From, r.InsertStart.GetChangeId(), r.To.GetChangeId()), common.RefreshAndSelect(r.From.Last()), common.Close)
+			return r.context.RunCommand(jj.RebaseInsert(r.From, r.InsertStart.GetChangeId(), r.To.GetChangeId(), ignoreImmutable), common.RefreshAndSelect(r.From.Last()), common.Close)
 		} else {
 			source := sourceToFlags[r.Source]
 			target := targetToFlags[r.Target]
-			return r.context.RunCommand(jj.Rebase(r.From, r.To.GetChangeId(), source, target), common.RefreshAndSelect(r.From.Last()), common.Close)
+			return r.context.RunCommand(jj.Rebase(r.From, r.To.GetChangeId(), source, target, ignoreImmutable), common.RefreshAndSelect(r.From.Last()), common.Close)
 		}
 	case key.Matches(msg, r.keyMap.Cancel):
 		return common.Close

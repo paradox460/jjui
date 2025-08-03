@@ -2,12 +2,13 @@ package abandon
 
 import (
 	"bytes"
+	"testing"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/idursun/jjui/internal/jj"
 	"github.com/idursun/jjui/test"
-	"testing"
-	"time"
 )
 
 var commit = &jj.Commit{ChangeId: "a"}
@@ -15,7 +16,7 @@ var revisions = jj.NewSelectedRevisions(commit)
 
 func Test_Accept(t *testing.T) {
 	commandRunner := test.NewTestCommandRunner(t)
-	commandRunner.Expect(jj.Abandon(revisions))
+	commandRunner.Expect(jj.Abandon(revisions, false))
 	defer commandRunner.Verify()
 
 	model := test.NewOperationHost(NewOperation(test.NewTestContext(commandRunner), revisions), commit)

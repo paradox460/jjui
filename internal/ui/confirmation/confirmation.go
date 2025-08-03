@@ -12,7 +12,7 @@ import (
 var (
 	right = key.NewBinding(key.WithKeys("right", "l"))
 	left  = key.NewBinding(key.WithKeys("left", "h"))
-	enter = key.NewBinding(key.WithKeys("enter"))
+	enter = key.NewBinding(key.WithKeys("enter", "alt+enter"))
 )
 
 type CloseMsg struct{}
@@ -21,6 +21,7 @@ type option struct {
 	label      string
 	cmd        tea.Cmd
 	keyBinding key.Binding
+	altCmd     tea.Cmd
 }
 
 type Styles struct {
@@ -51,7 +52,13 @@ func WithStylePrefix(prefix string) Option {
 // WithOption adds an option to the confirmation dialog
 func WithOption(label string, cmd tea.Cmd, keyBinding key.Binding) Option {
 	return func(m *Model) {
-		m.options = append(m.options, option{label, cmd, keyBinding})
+		m.options = append(m.options, option{label, cmd, keyBinding, cmd})
+	}
+}
+
+func WithAltOption(label string, cmd tea.Cmd, altCmd tea.Cmd, keyBinding key.Binding) Option {
+	return func(m *Model) {
+		m.options = append(m.options, option{label, cmd, keyBinding, altCmd})
 	}
 }
 
@@ -73,10 +80,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, enter):
 			selectedOption := m.options[m.selected]
+			if msg.Alt {
+				return m, selectedOption.altCmd
+			}
 			return m, selectedOption.cmd
 		default:
 			for _, option := range m.options {
 				if key.Matches(msg, option.keyBinding) {
+					if msg.Alt {
+						return m, option.altCmd
+					}
 					return m, option.cmd
 				}
 			}
@@ -108,7 +121,7 @@ func (m *Model) View() string {
 
 // AddOption adds an option to the confirmation dialog (legacy method)
 func (m *Model) AddOption(label string, cmd tea.Cmd, keyBinding key.Binding) {
-	m.options = append(m.options, option{label, cmd, keyBinding})
+	m.options = append(m.options, option{label, cmd, keyBinding, cmd})
 }
 
 // getStyleKey prefixes the key with the style prefix if one is set
