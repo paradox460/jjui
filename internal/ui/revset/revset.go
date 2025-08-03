@@ -205,7 +205,7 @@ func (m *Model) View() string {
 	if m.Editing {
 		w.WriteString(m.autoComplete.View())
 	} else {
-		revset := "(default)"
+		revset := m.context.DefaultRevset
 		if m.Value != "" {
 			revset = m.Value
 		}
