@@ -154,6 +154,7 @@ type KeyMappings[T any] struct {
 	JumpToWorkingCopy T                         `toml:"jump_to_working_copy"`
 	Apply             T                         `toml:"apply"`
 	Cancel            T                         `toml:"cancel"`
+	ForceApply        T                         `toml:"force_apply"`
 	ToggleSelect      T                         `toml:"toggle_select"`
 	New               T                         `toml:"new"`
 	Commit            T                         `toml:"commit"`
@@ -164,6 +165,7 @@ type KeyMappings[T any] struct {
 	Help              T                         `toml:"help"`
 	Describe          T                         `toml:"describe"`
 	Edit              T                         `toml:"edit"`
+	ForceEdit         T                         `toml:"force_edit"`
 	Diffedit          T                         `toml:"diffedit"`
 	Absorb            T                         `toml:"absorb"`
 	Split             T                         `toml:"split"`

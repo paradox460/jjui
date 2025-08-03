@@ -6,13 +6,13 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/idursun/jjui/internal/config"
 	"github.com/idursun/jjui/internal/ui/common"
 )
 
 var (
 	right = key.NewBinding(key.WithKeys("right", "l"))
 	left  = key.NewBinding(key.WithKeys("left", "h"))
-	enter = key.NewBinding(key.WithKeys("enter", "alt+enter"))
 )
 
 type CloseMsg struct{}
@@ -67,6 +67,7 @@ func (m *Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	km := config.Current.GetKeyMap()
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -78,11 +79,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.selected < len(m.options)-1 {
 				m.selected++
 			}
-		case key.Matches(msg, enter):
+		case key.Matches(msg, km.ForceApply):
 			selectedOption := m.options[m.selected]
-			if msg.Alt {
-				return m, selectedOption.altCmd
-			}
+			return m, selectedOption.altCmd
+		case key.Matches(msg, km.Apply):
+			selectedOption := m.options[m.selected]
 			return m, selectedOption.cmd
 		default:
 			for _, option := range m.options {

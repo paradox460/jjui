@@ -325,8 +325,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				cmd = m.context.RunCommand(jj.New(m.SelectedRevisions()), common.RefreshAndSelect("@"))
 			case key.Matches(msg, m.keymap.Commit):
 				cmd = m.context.RunInteractiveCommand(jj.CommitWorkingCopy(), common.Refresh)
-			case key.Matches(msg, m.keymap.Edit):
-				ignoreImmutable := msg.Alt
+			case key.Matches(msg, m.keymap.Edit, m.keymap.ForceEdit):
+				ignoreImmutable := key.Matches(msg, m.keymap.ForceEdit)
 				cmd = m.context.RunCommand(jj.Edit(m.SelectedRevision().GetChangeId(), ignoreImmutable), common.Refresh)
 			case key.Matches(msg, m.keymap.Diffedit):
 				changeId := m.SelectedRevision().GetChangeId()
