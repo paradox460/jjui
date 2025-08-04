@@ -15,14 +15,13 @@ var configFS embed.FS
 var Current = loadDefaultConfig()
 
 type Config struct {
-	Keys                           KeyMappings[keys] `toml:"keys"`
-	UI                             UIConfig          `toml:"ui"`
-	Revisions                      RevisionsConfig   `toml:"revisions"`
-	Preview                        PreviewConfig     `toml:"preview"`
-	OpLog                          OpLogConfig       `toml:"oplog"`
-	Graph                          GraphConfig       `toml:"graph"`
-	ExperimentalLogBatchingEnabled bool              `toml:"experimental_log_batching_enabled"`
-	Limit                          int               `toml:"limit"`
+	Keys      KeyMappings[keys] `toml:"keys"`
+	UI        UIConfig          `toml:"ui"`
+	Revisions RevisionsConfig   `toml:"revisions"`
+	Preview   PreviewConfig     `toml:"preview"`
+	OpLog     OpLogConfig       `toml:"oplog"`
+	Graph     GraphConfig       `toml:"graph"`
+	Limit     int               `toml:"limit"`
 }
 
 type Color struct {
@@ -128,8 +127,9 @@ type UIConfig struct {
 }
 
 type RevisionsConfig struct {
-	Template string `toml:"template"`
-	Revset   string `toml:"revset"`
+	LogBatching bool   `toml:"log_batching"`
+	Template    string `toml:"template"`
+	Revset      string `toml:"revset"`
 }
 
 type PreviewConfig struct {

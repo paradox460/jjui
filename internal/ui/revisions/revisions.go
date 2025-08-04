@@ -190,7 +190,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		}
 		m.isLoading = true
 		cmd, _ := m.updateOperation(msg)
-		if config.Current.ExperimentalLogBatchingEnabled {
+		if config.Current.Revisions.LogBatching {
 			m.tag += 1
 			return m, tea.Batch(m.loadStreaming(m.context.CurrentRevset, msg.SelectedRevision, m.tag), cmd)
 		} else {

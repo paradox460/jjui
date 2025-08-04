@@ -1,4 +1,3 @@
-experimental_log_batching_enabled = false
 limit = 0
 
 [keys]
@@ -111,11 +110,12 @@ limit = 0
   auto_refresh_interval = 0
 
 [ui.tracer]
-    enabled = false
+  enabled = false
 
 [ui.colors]
 
 [revisions]
+  log_batching = true
   # template = 'builtin_log_compact' # overrides jj's templates.log
   # revset = "zzzzzzz"               # overrides jj's revsets.log
 
