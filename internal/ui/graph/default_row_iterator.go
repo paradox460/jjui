@@ -119,13 +119,29 @@ func (s *DefaultRowIterator) Render(r io.Writer) {
 		}
 		s.writeSection(r, extended, extended, false, before)
 	}
+
+	// Each line has a flag:
+	// Revision: the line contains a change id and commit id (which is assumed to be the first line of the row)
+	// Highlightable: the line can be highlighted (e.g. revision line and description line)
+	// Elided: this is usually the last line of the row, it is not highlightable
 	lineIndex := -1
-	for segmentedLine := range row.RowLinesIter(parser.Including(parser.Highlightable)) {
-		lineIndex++
+	for lineIndex = 0; lineIndex < len(row.Lines); lineIndex++ {
+		segmentedLine := row.Lines[lineIndex]
+		if segmentedLine.Flags&parser.Elided == parser.Elided {
+			break
+		}
 		lw := strings.Builder{}
 		if segmentedLine.Flags&parser.Revision != parser.Revision && s.isHighlighted {
 			if decoration := s.Op.Render(row.Commit, operations.RenderOverDescription); decoration != "" {
 				s.writeSection(r, segmentedLine.Gutter, row.Extend(), true, decoration)
+				for lineIndex < len(row.Lines) {
+					if row.Lines[lineIndex].Flags&parser.Revision != parser.Revision && row.Lines[lineIndex].Flags&parser.Highlightable == parser.Highlightable {
+						lineIndex++
+						continue
+					} else {
+						break
+					}
+				}
 				continue
 			}
 		}
@@ -189,6 +205,7 @@ func (s *DefaultRowIterator) Render(r io.Writer) {
 			fmt.Fprint(r, lipgloss.PlaceHorizontal(s.Width, 0, line, lipgloss.WithWhitespaceBackground(s.textStyle.GetBackground())))
 		}
 		fmt.Fprint(r, "\n")
+
 	}
 
 	if row.Commit.IsRoot() {
@@ -230,11 +247,7 @@ func (s *DefaultRowIterator) writeSection(r io.Writer, current parser.GraphGutte
 	for _, sectionLine := range lines {
 		lw := strings.Builder{}
 		for _, segment := range current.Segments {
-			if s.isHighlighted && highlight {
-				fmt.Fprint(&lw, segment.Style.Inherit(s.selectedStyle).Render(segment.Text))
-			} else {
-				fmt.Fprint(&lw, segment.Style.Inherit(s.textStyle).Render(segment.Text))
-			}
+			fmt.Fprint(&lw, segment.Style.Inherit(s.textStyle).Render(segment.Text))
 		}
 
 		fmt.Fprint(&lw, sectionLine)
