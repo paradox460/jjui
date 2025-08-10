@@ -149,6 +149,74 @@ func TestDefaultRowIterator_Render_WithDescriptionOverride(t *testing.T) {
 	assert.Equal(t, strings.Trim(expected, "\n"), strings.Trim(w.String(), "\n"))
 }
 
+func TestDefaultRowIterator_Render_WithSelection(t *testing.T) {
+	rows := []parser.Row{
+		{
+			Commit: &jj.Commit{
+				ChangeId: "abc",
+				CommitId: "123",
+			},
+			Lines: []*parser.GraphRowLine{
+				{
+					Gutter: parser.GraphGutter{
+						Segments: []*screen.Segment{
+							{Text: "@", Style: style},
+							{Text: "  ", Style: style},
+						},
+					},
+					Segments: []*screen.Segment{
+						{Text: "abc", Style: style},
+						{Text: " ", Style: style},
+						{Text: "123", Style: style},
+					},
+					Flags: parser.Revision | parser.Highlightable,
+				},
+			},
+		},
+	}
+	iterator := NewDefaultRowIterator(rows, WithWidth(width), WithStylePrefix(""))
+	iterator.Selections["abc"] = true
+	iterator.Next()
+	var w strings.Builder
+	iterator.Render(&w)
+	expected := `@  ✓ abc 123`
+	assert.Contains(t, w.String(), expected)
+}
+
+func TestDefaultRowIterator_Render_Affected(t *testing.T) {
+	rows := []parser.Row{
+		{
+			Commit: &jj.Commit{
+				ChangeId: "abc",
+				CommitId: "123",
+			},
+			IsAffected: true,
+			Lines: []*parser.GraphRowLine{
+				{
+					Gutter: parser.GraphGutter{
+						Segments: []*screen.Segment{
+							{Text: "@", Style: style},
+							{Text: "  ", Style: style},
+						},
+					},
+					Segments: []*screen.Segment{
+						{Text: "abc", Style: style},
+						{Text: " ", Style: style},
+						{Text: "123", Style: style},
+					},
+					Flags: parser.Revision | parser.Highlightable,
+				},
+			},
+		},
+	}
+	iterator := NewDefaultRowIterator(rows, WithWidth(width), WithStylePrefix(""))
+	iterator.Next()
+	var w strings.Builder
+	iterator.Render(&w)
+	expected := `@  abc 123 (affected by last operation)`
+	assert.Contains(t, w.String(), expected)
+}
+
 type testOp struct {
 	renderLocation operations.RenderPosition
 }
