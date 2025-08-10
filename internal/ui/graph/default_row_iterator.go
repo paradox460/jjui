@@ -124,8 +124,7 @@ func (s *DefaultRowIterator) Render(r io.Writer) {
 	// Revision: the line contains a change id and commit id (which is assumed to be the first line of the row)
 	// Highlightable: the line can be highlighted (e.g. revision line and description line)
 	// Elided: this is usually the last line of the row, it is not highlightable
-	lineIndex := -1
-	for lineIndex = 0; lineIndex < len(row.Lines); lineIndex++ {
+	for lineIndex := 0; lineIndex < len(row.Lines); lineIndex++ {
 		segmentedLine := row.Lines[lineIndex]
 		if segmentedLine.Flags&parser.Elided == parser.Elided {
 			break
@@ -217,8 +216,7 @@ func (s *DefaultRowIterator) Render(r io.Writer) {
 		s.writeSection(r, extended, extended, false, afterSection)
 	}
 
-	for segmentedLine := range row.RowLinesIter(parser.Excluding(parser.Highlightable)) {
-		lineIndex++
+	for lineIndex, segmentedLine := range row.RowLinesIter(parser.Excluding(parser.Highlightable)) {
 		var lw strings.Builder
 		for i, segment := range segmentedLine.Gutter.Segments {
 			gutterInLane := s.Tracer.IsGutterInLane(s.current, lineIndex, i)

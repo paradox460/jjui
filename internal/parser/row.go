@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"github.com/idursun/jjui/internal/jj"
-	"github.com/idursun/jjui/internal/screen"
 	"strings"
 	"unicode"
+
+	"github.com/idursun/jjui/internal/jj"
+	"github.com/idursun/jjui/internal/screen"
 )
 
 type RowLineFlags int
@@ -204,12 +205,12 @@ func isHexLike(s string) bool {
 	return true
 }
 
-func (row *Row) RowLinesIter(predicate RowLinesIteratorPredicate) func(yield func(line *GraphRowLine) bool) {
-	return func(yield func(line *GraphRowLine) bool) {
+func (row *Row) RowLinesIter(predicate RowLinesIteratorPredicate) func(yield func(index int, line *GraphRowLine) bool) {
+	return func(yield func(index int, line *GraphRowLine) bool) {
 		for i := range row.Lines {
 			line := row.Lines[i]
 			if predicate(line.Flags) {
-				if !yield(line) {
+				if !yield(i, line) {
 					return
 				}
 			}
