@@ -174,8 +174,10 @@ func TestDefaultRowIterator_Render_WithSelection(t *testing.T) {
 			},
 		},
 	}
-	iterator := NewDefaultRowIterator(rows, WithWidth(width), WithStylePrefix(""))
-	iterator.Selections["abc"] = true
+	selections := map[string]bool{
+		"abc": true,
+	}
+	iterator := NewDefaultRowIterator(rows, WithWidth(width), WithStylePrefix(""), WithSelections(selections))
 	iterator.Next()
 	var w strings.Builder
 	iterator.Render(&w)

@@ -131,8 +131,8 @@ func (ctx *MainContext) CreateReplacements() map[string]string {
 		replacements[jj.OperationIdPlaceholder] = selectedItem.OperationId
 	}
 
-	checkedFiles := []string{}
-	checkedRevisions := []string{}
+	var checkedFiles []string
+	var checkedRevisions []string
 	for _, checked := range ctx.CheckedItems {
 		switch c := checked.(type) {
 		case SelectedRevision:
@@ -151,4 +151,24 @@ func (ctx *MainContext) CreateReplacements() map[string]string {
 	}
 
 	return replacements
+}
+
+func (ctx *MainContext) ToggleCheckedItem(item SelectedRevision) {
+	for i, checked := range ctx.CheckedItems {
+		if checked.Equal(item) {
+			ctx.CheckedItems = slices.Delete(ctx.CheckedItems, i, i+1)
+			return
+		}
+	}
+	ctx.CheckedItems = append(ctx.CheckedItems, item)
+}
+
+func (ctx *MainContext) GetSelectedRevisions() map[string]bool {
+	selectedRevisions := make(map[string]bool)
+	for _, item := range ctx.CheckedItems {
+		if rev, ok := item.(SelectedRevision); ok {
+			selectedRevisions[rev.ChangeId] = true
+		}
+	}
+	return selectedRevisions
 }

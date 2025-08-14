@@ -17,14 +17,14 @@ import (
 type DefaultRowIterator struct {
 	SearchText    string
 	AceJumpPrefix *string
-	Selections    map[string]bool
 	Op            operations.Operation
 	Width         int
 	Rows          []parser.Row
-	isHighlighted bool
-	isSelected    bool
 	current       int
 	Cursor        int
+	isHighlighted bool
+	isSelected    bool
+	selections    map[string]bool
 	dimmedStyle   lipgloss.Style
 	checkStyle    lipgloss.Style
 	textStyle     lipgloss.Style
@@ -38,7 +38,7 @@ func NewDefaultRowIterator(rows []parser.Row, options ...Option) *DefaultRowIter
 	iterator := &DefaultRowIterator{
 		Op:         &operations.Default{},
 		Rows:       rows,
-		Selections: make(map[string]bool),
+		selections: make(map[string]bool),
 		Tracer:     parser.NewNoopTracer(),
 		current:    -1,
 	}
@@ -68,6 +68,12 @@ func WithStylePrefix(prefix string) Option {
 	}
 }
 
+func WithSelections(selections map[string]bool) Option {
+	return func(s *DefaultRowIterator) {
+		s.selections = selections
+	}
+}
+
 func (s *DefaultRowIterator) IsHighlighted() bool {
 	return s.current == s.Cursor
 }
@@ -79,7 +85,7 @@ func (s *DefaultRowIterator) Next() bool {
 	}
 	s.isHighlighted = s.current == s.Cursor
 	s.isSelected = false
-	if v, ok := s.Selections[s.Rows[s.current].Commit.GetChangeId()]; ok {
+	if v, ok := s.selections[s.Rows[s.current].Commit.GetChangeId()]; ok {
 		s.isSelected = v
 	}
 	return true

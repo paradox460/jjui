@@ -35,29 +35,28 @@ import (
 )
 
 type Model struct {
-	rows              []parser.Row
-	tag               uint64
-	revisionToSelect  string
-	offScreenRows     []parser.Row
-	streamer          *graph.GraphStreamer
-	rowsChan          <-chan parser.RowBatch
-	controlChan       chan parser.ControlMsg
-	hasMore           bool
-	op                operations.Operation
-	cursor            int
-	width             int
-	height            int
-	context           *appContext.MainContext
-	keymap            config.KeyMappings[key.Binding]
-	output            string
-	err               error
-	aceJump           *ace_jump.AceJump
-	quickSearch       string
-	selectedRevisions map[string]bool
-	previousOpLogId   string
-	isLoading         bool
-	w                 *graph.Renderer
-	textStyle         lipgloss.Style
+	rows             []parser.Row
+	tag              uint64
+	revisionToSelect string
+	offScreenRows    []parser.Row
+	streamer         *graph.GraphStreamer
+	rowsChan         <-chan parser.RowBatch
+	controlChan      chan parser.ControlMsg
+	hasMore          bool
+	op               operations.Operation
+	cursor           int
+	width            int
+	height           int
+	context          *appContext.MainContext
+	keymap           config.KeyMappings[key.Binding]
+	output           string
+	err              error
+	aceJump          *ace_jump.AceJump
+	quickSearch      string
+	previousOpLogId  string
+	isLoading        bool
+	w                *graph.Renderer
+	textStyle        lipgloss.Style
 }
 
 type revisionsMsg struct {
@@ -140,13 +139,20 @@ func (m *Model) SelectedRevision() *jj.Commit {
 
 func (m *Model) SelectedRevisions() jj.SelectedRevisions {
 	var selected []*jj.Commit
-	for _, row := range m.rows {
-		if m.selectedRevisions[row.Commit.GetChangeId()] {
-			selected = append(selected, row.Commit)
+	for _, ci := range m.context.CheckedItems {
+		if rev, ok := ci.(context.SelectedRevision); ok {
+			selected = append(selected, &jj.Commit{
+				ChangeId: rev.ChangeId,
+				CommitId: rev.CommitId,
+			})
 		}
 	}
+
 	if len(selected) == 0 {
-		return jj.NewSelectedRevisions(m.SelectedRevision())
+		if rev := m.SelectedRevision(); rev != nil {
+			return jj.NewSelectedRevisions(rev)
+		}
+		return jj.NewSelectedRevisions()
 	}
 	return jj.NewSelectedRevisions(selected...)
 }
@@ -185,7 +191,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		}
 	case common.RefreshMsg:
 		if !msg.KeepSelections {
-			m.selectedRevisions = make(map[string]bool)
 			m.context.ClearCheckedItems(reflect.TypeFor[context.SelectedRevision]())
 		}
 		m.isLoading = true
@@ -297,14 +302,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			case key.Matches(msg, m.keymap.ToggleSelect):
 				commit := m.rows[m.cursor].Commit
 				changeId := commit.GetChangeId()
-				isChecked := !m.selectedRevisions[changeId]
-				m.selectedRevisions[changeId] = isChecked
 				item := context.SelectedRevision{ChangeId: changeId, CommitId: commit.CommitId}
-				if isChecked {
-					m.context.AddCheckedItem(item)
-				} else {
-					m.context.RemoveCheckedItem(item)
-				}
+				m.context.ToggleCheckedItem(item)
 				immediate, _ := m.context.RunCommandImmediate(jj.GetParent(jj.NewSelectedRevisions(commit)))
 				parentIndex := m.selectRevision(string(immediate))
 				if parentIndex != -1 {
@@ -454,10 +453,9 @@ func (m *Model) View() string {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, "(no matching revisions)")
 	}
 
-	renderer := graph.NewDefaultRowIterator(m.rows, graph.WithWidth(m.width), graph.WithStylePrefix("revisions"))
+	renderer := graph.NewDefaultRowIterator(m.rows, graph.WithWidth(m.width), graph.WithStylePrefix("revisions"), graph.WithSelections(m.context.GetSelectedRevisions()))
 	renderer.Op = m.op
 	renderer.Cursor = m.cursor
-	renderer.Selections = m.selectedRevisions
 	renderer.SearchText = m.quickSearch
 	renderer.AceJumpPrefix = m.aceJump.Prefix()
 
@@ -579,17 +577,16 @@ func New(c *appContext.MainContext) Model {
 	keymap := config.Current.GetKeyMap()
 	w := graph.NewRenderer(20, 10)
 	return Model{
-		context:           c,
-		w:                 w,
-		keymap:            keymap,
-		rows:              nil,
-		offScreenRows:     nil,
-		op:                operations.NewDefault(),
-		cursor:            0,
-		width:             20,
-		height:            10,
-		selectedRevisions: make(map[string]bool),
-		textStyle:         common.DefaultPalette.Get("revisions text"),
+		context:       c,
+		w:             w,
+		keymap:        keymap,
+		rows:          nil,
+		offScreenRows: nil,
+		op:            operations.NewDefault(),
+		cursor:        0,
+		width:         20,
+		height:        10,
+		textStyle:     common.DefaultPalette.Get("revisions text"),
 	}
 }
 
