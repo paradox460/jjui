@@ -36,7 +36,7 @@ func ExecLine(ctx *context.MainContext, msg common.ExecMsg) tea.Cmd {
 	case common.ExecJJ:
 		args := strings.Fields(msg.Line)
 		args = jj.TemplatedArgs(args, replacements)
-		return exec_program("jj", args, nil)
+		return execProgram("jj", args, ctx.Location, nil)
 	case common.ExecShell:
 		// user input is run via `$SHELL -c` to support user specifying command lines
 		// that have pipes (eg, to a pager) or redirection.
@@ -45,7 +45,7 @@ func ExecLine(ctx *context.MainContext, msg common.ExecMsg) tea.Cmd {
 			program = "sh"
 		}
 		args := []string{"-c", msg.Line}
-		return exec_program(program, args, replacements)
+		return execProgram(program, args, ctx.Location, replacements)
 	}
 	return nil
 }
@@ -59,31 +59,33 @@ func ExecLine(ctx *context.MainContext, msg common.ExecMsg) tea.Cmd {
 // Since programs are run interactively (without capturing stdio) users have
 // already seen output on the terminal, and we don't use the usual CommandRunning or
 // CommandCompleted machinery we use for background jj processes.
-// However if the program fails we ask the user for confirmation before closing
+// However, if the program fails we ask the user for confirmation before closing
 // and returning stdio back to jjui.
-func exec_program(program string, args []string, env map[string]string) tea.Cmd {
-	p := &process{program: program, args: args, env: env}
+func execProgram(program string, args []string, location string, env map[string]string) tea.Cmd {
+	p := &process{program: program, args: args, env: env, location: location}
 	return tea.Exec(p, func(err error) tea.Msg {
 		return common.RefreshMsg{}
 	})
 }
 
 type process struct {
-	program string
-	args    []string
-	stdin   io.Reader
-	stdout  io.Writer
-	stderr  io.Writer
-	env     map[string]string
+	program  string
+	args     []string
+	stdin    io.Reader
+	stdout   io.Writer
+	stderr   io.Writer
+	env      map[string]string
+	location string
 }
 
-// This is a blocking call.
+// Run This is a blocking call.
 func (p *process) Run() error {
 	cmd := exec.Command(p.program, p.args...)
+	cmd.Dir = p.location
 	cmd.Stdin = p.stdin
 	cmd.Stdout = p.stdout
 	cmd.Stderr = p.stderr
-	env := []string{}
+	var env []string
 	for k, v := range p.env {
 		name := strings.TrimPrefix(k, "$")
 		env = append(env, name+"="+v)
@@ -92,7 +94,7 @@ func (p *process) Run() error {
 	// this is useful for sub-programs to access context vars.
 	cmd.Env = append(os.Environ(), env...)
 
-	// If program terminates quickly (most likely non interactive commands),
+	// If program terminates quickly (most likely non-interactive commands),
 	// we ask the user to press a key, so they can at least see the output.
 	askUserClose := true
 	go func() {
