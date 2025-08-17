@@ -139,20 +139,20 @@ func (m *Model) SelectedRevision() *jj.Commit {
 
 func (m *Model) SelectedRevisions() jj.SelectedRevisions {
 	var selected []*jj.Commit
+	ids := make(map[string]bool)
 	for _, ci := range m.context.CheckedItems {
 		if rev, ok := ci.(context.SelectedRevision); ok {
-			selected = append(selected, &jj.Commit{
-				ChangeId: rev.ChangeId,
-				CommitId: rev.CommitId,
-			})
+			ids[rev.CommitId] = true
+		}
+	}
+	for _, row := range m.rows {
+		if _, ok := ids[row.Commit.CommitId]; ok {
+			selected = append(selected, row.Commit)
 		}
 	}
 
 	if len(selected) == 0 {
-		if rev := m.SelectedRevision(); rev != nil {
-			return jj.NewSelectedRevisions(rev)
-		}
-		return jj.NewSelectedRevisions()
+		return jj.NewSelectedRevisions(m.SelectedRevision())
 	}
 	return jj.NewSelectedRevisions(selected...)
 }
