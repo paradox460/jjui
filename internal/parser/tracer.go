@@ -61,14 +61,31 @@ func (t *Tracer) IsGutterInLane(current int, lineIndex int, segmentIndex int) bo
 
 func (t *Tracer) UpdateGutterText(current int, lineIndex int, i int, text string) string {
 	gutterInLane := t.IsGutterInLane(current, lineIndex, i)
-	if gutterInLane && text == "├" {
+	if gutterInLane {
 		rightLane := t.getLane(current, lineIndex, i+1)&t.highlightedLowestBit > 0
 		upperLane := t.getLane(current, lineIndex-1, i)&t.highlightedLowestBit > 0
-
-		if rightLane && !upperLane {
-			text = "╭"
-		} else if !rightLane && upperLane {
+		if text == "├" {
+			if rightLane && !upperLane {
+				text = "╭"
+			} else if !rightLane && upperLane {
+				text = "│"
+			}
+		}
+		leftLane := t.getLane(current, lineIndex, i-1)&t.highlightedLowestBit > 0
+		if text == "┼" && !rightLane && !leftLane && upperLane {
 			text = "│"
+		}
+		if text == "╭" && upperLane && !rightLane {
+			text = "│"
+		}
+		if text == "─" && upperLane && !rightLane && !leftLane {
+			text = "│"
+		}
+		if text == "┬" && upperLane && !rightLane && !leftLane {
+			text = "│"
+		}
+		if text == "╮" && upperLane && leftLane {
+			text = "┤"
 		}
 	}
 	return text
