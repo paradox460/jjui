@@ -11,6 +11,7 @@ import (
 	"github.com/idursun/jjui/internal/ui/ace_jump"
 	"github.com/idursun/jjui/internal/ui/context"
 	"github.com/idursun/jjui/internal/ui/operations/duplicate"
+	"github.com/idursun/jjui/internal/ui/operations/megamerge"
 	"github.com/idursun/jjui/internal/ui/operations/revert"
 
 	"github.com/idursun/jjui/internal/parser"
@@ -160,6 +161,8 @@ func (m *Model) SelectedRevisions() jj.SelectedRevisions {
 func (m *Model) Init() tea.Cmd {
 	return common.RefreshAndSelect("@")
 }
+
+var megamergeKey = key.NewBinding(key.WithKeys("M"), key.WithHelp("M", "megamerge"))
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	if k, ok := msg.(revisionsMsg); ok {
@@ -370,6 +373,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.op = rebase.NewOperation(m.context, m.SelectedRevisions(), rebase.SourceRevision, rebase.TargetDestination)
 			case key.Matches(msg, m.keymap.Duplicate.Mode):
 				m.op = duplicate.NewOperation(m.context, m.SelectedRevisions(), duplicate.TargetDestination)
+			case key.Matches(msg, megamergeKey):
+				m.op = megamerge.NewModel(m.context, m.SelectedRevision())
 			}
 		}
 	}

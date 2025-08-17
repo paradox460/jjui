@@ -242,6 +242,23 @@ func RebaseInsert(from SelectedRevisions, insertAfter string, insertBefore strin
 	return args
 }
 
+func ModifyParents(to string, parentsToAdd []string, parentsToRemove []string) CommandArgs {
+	var b strings.Builder
+	b.WriteString("parents(")
+	b.WriteString(to)
+	b.WriteString(") ")
+	for _, add := range parentsToAdd {
+		b.WriteString(" | ")
+		b.WriteString(add)
+	}
+	for _, remove := range parentsToRemove {
+		b.WriteString(" ~ ")
+		b.WriteString(remove)
+	}
+	args := []string{"rebase", "-r", to, "-d", b.String()}
+	return args
+}
+
 func Revert(from SelectedRevisions, to string, source string, target string) CommandArgs {
 	args := []string{"revert"}
 	args = append(args, from.AsPrefixedArgs(source)...)
@@ -326,6 +343,12 @@ func GetParent(revisions SelectedRevisions) CommandArgs {
 	joined := strings.Join(revisions.GetIds(), "|")
 	args = append(args, fmt.Sprintf("heads(::fork_point(%s) & ~present(%s))", joined, joined))
 	args = append(args, "-n", "1", "--color", "never", "--no-graph", "--quiet", "--ignore-working-copy", "--template", "commit_id.shortest()")
+	return args
+}
+
+func GetParents(revision string) CommandArgs {
+	args := []string{"log", "-r", revision}
+	args = append(args, "--color", "never", "--no-graph", "--quiet", "--ignore-working-copy", "--template", "parents.map(|x| x.commit_id().shortest())")
 	return args
 }
 

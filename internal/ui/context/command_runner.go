@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/charmbracelet/bubbletea"
-	"github.com/idursun/jjui/internal/ui/common"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"slices"
 	"sync"
+
+	"github.com/charmbracelet/bubbletea"
+	"github.com/idursun/jjui/internal/ui/common"
 )
 
 type CommandRunner interface {

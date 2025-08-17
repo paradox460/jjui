@@ -226,7 +226,7 @@ func (m *Model) View() string {
 		commandStatusMark = m.helpView(m.keyMap)
 		commandStatusMark = lipgloss.PlaceHorizontal(m.width, 0, commandStatusMark, lipgloss.WithWhitespaceBackground(m.styles.text.GetBackground()))
 	}
-	modeWith := 10
+	modeWith := 11
 	ret := m.styles.text.Render(strings.ReplaceAll(m.command, "\n", "⏎"))
 	if m.IsFocused() {
 		commandStatusMark = ""
