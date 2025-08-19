@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/idursun/jjui/internal/ui/ace_jump"
-	"github.com/idursun/jjui/internal/ui/context"
 	"github.com/idursun/jjui/internal/ui/operations/duplicate"
 	"github.com/idursun/jjui/internal/ui/operations/megamerge"
 	"github.com/idursun/jjui/internal/ui/operations/revert"
@@ -142,7 +141,7 @@ func (m *Model) SelectedRevisions() jj.SelectedRevisions {
 	var selected []*jj.Commit
 	ids := make(map[string]bool)
 	for _, ci := range m.context.CheckedItems {
-		if rev, ok := ci.(context.SelectedRevision); ok {
+		if rev, ok := ci.(appContext.SelectedRevision); ok {
 			ids[rev.CommitId] = true
 		}
 	}
@@ -194,7 +193,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		}
 	case common.RefreshMsg:
 		if !msg.KeepSelections {
-			m.context.ClearCheckedItems(reflect.TypeFor[context.SelectedRevision]())
+			m.context.ClearCheckedItems(reflect.TypeFor[appContext.SelectedRevision]())
 		}
 		m.isLoading = true
 		cmd, _ := m.updateOperation(msg)
@@ -515,7 +514,7 @@ func (m *Model) loadStreaming(revset string, selectedRevision string, tag uint64
 	m.hasMore = true
 	m.offScreenRows = nil
 	log.Println("Starting streaming revisions with tag:", tag)
-	var startStreamingCmd = func() tea.Msg {
+	startStreamingCmd := func() tea.Msg {
 		return startRowsStreamingMsg{selectedRevision, tag}
 	}
 

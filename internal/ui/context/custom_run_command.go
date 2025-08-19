@@ -46,13 +46,13 @@ func (c CustomRunCommand) Description(ctx *MainContext) string {
 
 func (c CustomRunCommand) Prepare(ctx *MainContext) tea.Cmd {
 	replacements := ctx.CreateReplacements()
-	switch {
-	case c.Show == config.ShowOptionDiff:
+	switch c.Show {
+	case config.ShowOptionDiff:
 		return func() tea.Msg {
 			output, _ := ctx.RunCommandImmediate(jj.TemplatedArgs(c.Args, replacements))
 			return common.ShowDiffMsg(output)
 		}
-	case c.Show == config.ShowOptionInteractive:
+	case config.ShowOptionInteractive:
 		return ctx.RunInteractiveCommand(jj.TemplatedArgs(c.Args, replacements), common.Refresh)
 	default:
 		return ctx.RunCommand(jj.TemplatedArgs(c.Args, replacements), common.Refresh)
