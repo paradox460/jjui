@@ -33,6 +33,7 @@ limit = 0
   custom_commands = ["x"]
   leader = ["\\"]
   suspend = ["ctrl+z"]
+  megamerge = ["M"]
   [keys.rebase]
     mode = ["r"]
     revision = ["r"]

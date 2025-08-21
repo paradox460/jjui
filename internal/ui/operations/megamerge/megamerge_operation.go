@@ -43,6 +43,7 @@ func (m *Model) FullHelp() [][]key.Binding {
 type styles struct {
 	sourceMarker lipgloss.Style
 	targetMarker lipgloss.Style
+	dimmed       lipgloss.Style
 }
 
 func (m *Model) SetSelectedRevision(commit *jj.Commit) {
@@ -102,6 +103,10 @@ func (m *Model) Render(commit *jj.Commit, renderPosition operations.RenderPositi
 	if m.toRemove[commit.GetChangeId()] {
 		return m.styles.sourceMarker.Render("<< remove >>")
 	}
+
+	if slices.Contains(m.parents, commit.CommitId) {
+		return m.styles.dimmed.Render("<< parent >>")
+	}
 	if commit.GetChangeId() == m.target.GetChangeId() {
 		return m.styles.targetMarker.Render("<< to >>")
 	}
@@ -114,8 +119,9 @@ func (m *Model) Name() string {
 
 func NewModel(ctx *context.MainContext, to *jj.Commit) *Model {
 	styles := styles{
-		sourceMarker: common.DefaultPalette.Get("parents source_marker"),
-		targetMarker: common.DefaultPalette.Get("parents target_marker"),
+		sourceMarker: common.DefaultPalette.Get("megamerge source_marker"),
+		targetMarker: common.DefaultPalette.Get("megamerge target_marker"),
+		dimmed:       common.DefaultPalette.Get("megamerge dimmed"),
 	}
 	output, err := ctx.RunCommandImmediate(jj.GetParents(to.GetChangeId()))
 	if err != nil {

@@ -161,8 +161,6 @@ func (m *Model) Init() tea.Cmd {
 	return common.RefreshAndSelect("@")
 }
 
-var megamergeKey = key.NewBinding(key.WithKeys("M"), key.WithHelp("M", "megamerge"))
-
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	if k, ok := msg.(revisionsMsg); ok {
 		msg = k.msg
@@ -382,7 +380,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.op = rebase.NewOperation(m.context, m.SelectedRevisions(), rebase.SourceRevision, rebase.TargetDestination)
 			case key.Matches(msg, m.keymap.Duplicate.Mode):
 				m.op = duplicate.NewOperation(m.context, m.SelectedRevisions(), duplicate.TargetDestination)
-			case key.Matches(msg, megamergeKey):
+			case key.Matches(msg, m.keymap.Megamerge):
 				m.op = megamerge.NewModel(m.context, m.SelectedRevision())
 			}
 		}

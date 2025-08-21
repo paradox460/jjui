@@ -43,6 +43,7 @@ func Convert(m KeyMappings[keys]) KeyMappings[key.Binding] {
 		CustomCommands:   key.NewBinding(key.WithKeys(m.CustomCommands...), key.WithHelp(JoinKeys(m.CustomCommands), "custom commands menu")),
 		Leader:           key.NewBinding(key.WithKeys(m.Leader...), key.WithHelp(JoinKeys(m.Leader), "leader")),
 		Suspend:          key.NewBinding(key.WithKeys(m.Suspend...), key.WithHelp(JoinKeys(m.Suspend), "suspend")),
+		Megamerge:        key.NewBinding(key.WithKeys(m.Megamerge...), key.WithHelp(JoinKeys(m.Megamerge), "megamerge")),
 		ExecJJ:           key.NewBinding(key.WithKeys(m.ExecJJ...), key.WithHelp(JoinKeys(m.ExecJJ), "interactive jj")),
 		ExecShell:        key.NewBinding(key.WithKeys(m.ExecShell...), key.WithHelp(JoinKeys(m.ExecShell), "interactive shell command")),
 		Revert: revertModeKeys[key.Binding]{
@@ -181,6 +182,7 @@ type KeyMappings[T any] struct {
 	CustomCommands    T                         `toml:"custom_commands"`
 	Leader            T                         `toml:"leader"`
 	Suspend           T                         `toml:"suspend"`
+	Megamerge         T                         `toml:"megamerge"`
 	Revert            revertModeKeys[T]         `toml:"revert"`
 	Rebase            rebaseModeKeys[T]         `toml:"rebase"`
 	Duplicate         duplicateModeKeys[T]      `toml:"duplicate"`
