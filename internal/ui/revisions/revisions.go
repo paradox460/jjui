@@ -212,7 +212,17 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	case startRowsStreamingMsg:
 		m.offScreenRows = nil
 		m.revisionToSelect = msg.selectedRevision
-		log.Println("Starting streaming revisions message received with tag:", msg.tag)
+
+		// If the revision to select is not set, use the currently selected item
+		if m.revisionToSelect == "" {
+			switch selected := m.context.SelectedItem.(type) {
+			case appContext.SelectedRevision:
+				m.revisionToSelect = selected.CommitId
+			case appContext.SelectedFile:
+				m.revisionToSelect = selected.CommitId
+			}
+		}
+		log.Println("Starting streaming revisions message received with tag:", msg.tag, "revision to select:", msg.selectedRevision)
 		return m, m.requestMoreRows(msg.tag)
 	case appendRowsBatchMsg:
 		if msg.tag != m.tag {
@@ -304,7 +314,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			case key.Matches(msg, m.keymap.ToggleSelect):
 				commit := m.rows[m.cursor].Commit
 				changeId := commit.GetChangeId()
-				item := context.SelectedRevision{ChangeId: changeId, CommitId: commit.CommitId}
+				item := appContext.SelectedRevision{ChangeId: changeId, CommitId: commit.CommitId}
 				m.context.ToggleCheckedItem(item)
 				immediate, _ := m.context.RunCommandImmediate(jj.GetParent(jj.NewSelectedRevisions(commit)))
 				parentIndex := m.selectRevision(string(immediate))

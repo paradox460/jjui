@@ -1,8 +1,9 @@
 package squash
 
 import (
-	"github.com/charmbracelet/lipgloss"
 	"slices"
+
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,7 +33,7 @@ type styles struct {
 func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, s.keyMap.Apply):
-		return tea.Batch(common.Close, s.context.RunInteractiveCommand(jj.Squash(s.from, s.current.ChangeId, s.keepEmptied, s.interactive), common.Refresh))
+		return tea.Batch(common.Close, s.context.RunInteractiveCommand(jj.Squash(s.from, s.current.GetChangeId(), s.keepEmptied, s.interactive), common.RefreshAndSelect(s.current.GetChangeId())))
 	case key.Matches(msg, s.keyMap.Cancel):
 		return common.Close
 	case key.Matches(msg, s.keyMap.Squash.KeepEmptied):
