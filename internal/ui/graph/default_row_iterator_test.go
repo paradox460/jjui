@@ -149,6 +149,42 @@ func TestDefaultRowIterator_Render_WithDescriptionOverride(t *testing.T) {
 	assert.Equal(t, strings.Trim(expected, "\n"), strings.Trim(w.String(), "\n"))
 }
 
+func TestDefaultRowIterator_Render_SingleRow_WithDescriptionOverride(t *testing.T) {
+	rows := []parser.Row{
+		{
+			Commit: &jj.Commit{
+				ChangeId: "abc",
+				CommitId: "123",
+			},
+			Lines: []*parser.GraphRowLine{
+				{
+					Gutter: parser.GraphGutter{
+						Segments: []*screen.Segment{
+							{Text: "@", Style: style},
+							{Text: "  ", Style: style},
+						},
+					},
+					Segments: []*screen.Segment{
+						{Text: "abc", Style: style},
+						{Text: " description goes here ", Style: style},
+						{Text: "123", Style: style},
+					},
+					Flags: parser.Revision | parser.Highlightable,
+				},
+			},
+		},
+	}
+	iterator := NewDefaultRowIterator(rows, WithWidth(width))
+	iterator.Op = testOp{renderLocation: operations.RenderOverDescription}
+	iterator.Next()
+	var w strings.Builder
+	iterator.Render(&w)
+	expected := `@  abc description goes here 123
+  test decoration`
+	expected = lipgloss.Place(width, 2, 0, 0, expected)
+	assert.Equal(t, strings.Trim(expected, "\n"), strings.Trim(w.String(), "\n"))
+}
+
 func TestDefaultRowIterator_Render_WithSelection(t *testing.T) {
 	rows := []parser.Row{
 		{

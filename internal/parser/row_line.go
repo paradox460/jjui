@@ -1,8 +1,9 @@
 package parser
 
 import (
-	"github.com/idursun/jjui/internal/screen"
 	"strings"
+
+	"github.com/idursun/jjui/internal/screen"
 )
 
 type GraphRowLine struct {
@@ -70,12 +71,6 @@ func (gr *GraphRowLine) chop(indent int) {
 		}
 	}
 
-	// Pad with spaces if indent is not fully consumed
-	if indent > 0 && len(gr.Segments) > 0 {
-		lastSegment := gr.Segments[len(gr.Segments)-1]
-		lastSegment.Text += strings.Repeat(" ", indent)
-	}
-
 	// break gutter into segments per rune
 	segments = gr.Gutter.Segments
 	gr.Gutter.Segments = make([]*screen.Segment, 0)
@@ -88,6 +83,13 @@ func (gr *GraphRowLine) chop(indent int) {
 			gr.Gutter.Segments = append(gr.Gutter.Segments, &extended)
 		}
 	}
+
+	// Pad with spaces if indent is not fully consumed
+	if indent > 0 && len(gr.Gutter.Segments) > 0 {
+		lastSegment := gr.Gutter.Segments[len(gr.Gutter.Segments)-1]
+		lastSegment.Text += strings.Repeat(" ", indent)
+	}
+
 }
 
 func (gr *GraphRowLine) containsRune(r rune) bool {

@@ -126,6 +126,10 @@ func (s *DefaultRowIterator) Render(r io.Writer) {
 		s.writeSection(r, extended, extended, false, before)
 	}
 
+	descriptionOverlay := s.Op.Render(row.Commit, operations.RenderOverDescription)
+	requiresDescriptionRendering := descriptionOverlay != "" && s.isHighlighted
+	descriptionRendered := false
+
 	// Each line has a flag:
 	// Revision: the line contains a change id and commit id (which is assumed to be the first line of the row)
 	// Highlightable: the line can be highlighted (e.g. revision line and description line)
@@ -137,10 +141,12 @@ func (s *DefaultRowIterator) Render(r io.Writer) {
 		}
 		lw := strings.Builder{}
 		if segmentedLine.Flags&parser.Revision != parser.Revision && s.isHighlighted {
-			if decoration := s.Op.Render(row.Commit, operations.RenderOverDescription); decoration != "" {
-				s.writeSection(r, segmentedLine.Gutter, row.Extend(), true, decoration)
+			if requiresDescriptionRendering {
+				s.writeSection(r, segmentedLine.Gutter, row.Extend(), true, descriptionOverlay)
+				descriptionRendered = true
+				// skip all remaining highlightable lines
 				for lineIndex < len(row.Lines) {
-					if row.Lines[lineIndex].Flags&parser.Revision != parser.Revision && row.Lines[lineIndex].Flags&parser.Highlightable == parser.Highlightable {
+					if row.Lines[lineIndex].Flags&parser.Highlightable == parser.Highlightable {
 						lineIndex++
 						continue
 					} else {
@@ -210,7 +216,10 @@ func (s *DefaultRowIterator) Render(r io.Writer) {
 			fmt.Fprint(r, lipgloss.PlaceHorizontal(s.Width, 0, line, lipgloss.WithWhitespaceBackground(s.textStyle.GetBackground())))
 		}
 		fmt.Fprint(r, "\n")
+	}
 
+	if requiresDescriptionRendering && !descriptionRendered {
+		s.writeSection(r, row.Extend(), row.Extend(), true, descriptionOverlay)
 	}
 
 	if row.Commit.IsRoot() {
