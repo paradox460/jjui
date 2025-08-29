@@ -255,7 +255,7 @@ func ModifyParents(to string, parentsToAdd []string, parentsToRemove []string) C
 		b.WriteString(" ~ ")
 		b.WriteString(remove)
 	}
-	args := []string{"rebase", "-r", to, "-d", b.String()}
+	args := []string{"rebase", "-s", to, "-d", b.String()}
 	return args
 }
 
