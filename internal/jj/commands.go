@@ -247,13 +247,13 @@ func ModifyParents(to string, parentsToAdd []string, parentsToRemove []string) C
 	b.WriteString("parents(")
 	b.WriteString(to)
 	b.WriteString(") ")
-	for _, add := range parentsToAdd {
-		b.WriteString(" | ")
-		b.WriteString(add)
-	}
 	for _, remove := range parentsToRemove {
 		b.WriteString(" ~ ")
 		b.WriteString(remove)
+	}
+	for _, add := range parentsToAdd {
+		b.WriteString(" | ")
+		b.WriteString(add)
 	}
 	args := []string{"rebase", "-s", to, "-d", b.String()}
 	return args
