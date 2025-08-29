@@ -263,6 +263,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
+	if len(m.rows) == 0 {
+		return m, nil
+	}
+
 	if cmd, ok := m.updateOperation(msg); ok {
 		return m, cmd
 	}
