@@ -73,7 +73,7 @@ func Split(revision string, files []string) CommandArgs {
 	args := []string{"split", "-r", revision}
 	var escapedFiles []string
 	for _, file := range files {
-		escapedFiles = append(escapedFiles, escapeFileName(file))
+		escapedFiles = append(escapedFiles, EscapeFileName(file))
 	}
 	args = append(args, escapedFiles...)
 	return args
@@ -103,7 +103,7 @@ func Abandon(revision SelectedRevisions, ignoreImmutable bool) CommandArgs {
 func Diff(revision string, fileName string, extraArgs ...string) CommandArgs {
 	args := []string{"diff", "-r", revision, "--color", "always", "--ignore-working-copy"}
 	if fileName != "" {
-		args = append(args, escapeFileName(fileName))
+		args = append(args, EscapeFileName(fileName))
 	}
 	if extraArgs != nil {
 		args = append(args, extraArgs...)
@@ -115,7 +115,7 @@ func Restore(revision string, files []string) CommandArgs {
 	args := []string{"restore", "-c", revision}
 	var escapedFiles []string
 	for _, file := range files {
-		escapedFiles = append(escapedFiles, escapeFileName(file))
+		escapedFiles = append(escapedFiles, EscapeFileName(file))
 	}
 	args = append(args, escapedFiles...)
 	return args
@@ -293,7 +293,7 @@ func TemplatedArgs(templatedArgs []string, replacements map[string]string) Comma
 	var args []string
 	if fileReplacement, exists := replacements[FilePlaceholder]; exists {
 		// Ensure that the file replacement is quoted
-		replacements[FilePlaceholder] = escapeFileName(fileReplacement)
+		replacements[FilePlaceholder] = EscapeFileName(fileReplacement)
 	}
 	for _, arg := range templatedArgs {
 		for k, v := range replacements {
@@ -308,7 +308,7 @@ func Absorb(changeId string, files ...string) CommandArgs {
 	args := []string{"absorb", "--from", changeId, "--color", "never"}
 	var escapedFiles []string
 	for _, file := range files {
-		escapedFiles = append(escapedFiles, escapeFileName(file))
+		escapedFiles = append(escapedFiles, EscapeFileName(file))
 	}
 	args = append(args, escapedFiles...)
 	return args
@@ -370,7 +370,7 @@ func GetIdsFromRevset(revset string) CommandArgs {
 	return []string{"log", "-r", revset, "--color", "never", "--no-graph", "--quiet", "--ignore-working-copy", "--template", "change_id.shortest() ++ '\n'"}
 }
 
-func escapeFileName(fileName string) string {
+func EscapeFileName(fileName string) string {
 	// Escape backslashes and quotes in the file name for shell compatibility
 	if strings.Contains(fileName, "\\") {
 		fileName = strings.ReplaceAll(fileName, "\\", "\\\\")
