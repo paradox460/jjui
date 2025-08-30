@@ -305,7 +305,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, m.updateSelection()
 		case key.Matches(msg, m.keymap.AceJump):
 			m.aceJump = m.findAceKeys()
-			return m, nil
 		default:
 			if op, ok := m.op.(operations.HandleKey); ok {
 				cmd = op.HandleKey(msg)

@@ -19,7 +19,7 @@ func (m *Model) HandleAceJump(k tea.KeyMsg) tea.Cmd {
 		m.cursor = found.RowIdx
 		m.aceJump = nil
 	}
-	return nil
+	return m.updateSelection()
 }
 
 func (m *Model) findAceKeys() *ace_jump.AceJump {
