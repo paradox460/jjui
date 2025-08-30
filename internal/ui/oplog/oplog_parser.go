@@ -1,8 +1,9 @@
 package oplog
 
 import (
-	"github.com/idursun/jjui/internal/screen"
 	"io"
+
+	"github.com/idursun/jjui/internal/screen"
 )
 
 func parseRows(reader io.Reader) []row {

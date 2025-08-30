@@ -1,9 +1,10 @@
 package flash
 
 import (
-	"github.com/idursun/jjui/internal/screen"
 	"strings"
 	"time"
+
+	"github.com/idursun/jjui/internal/screen"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

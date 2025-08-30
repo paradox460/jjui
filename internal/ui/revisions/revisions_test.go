@@ -1,10 +1,11 @@
 package revisions
 
 import (
+	"testing"
+
 	"github.com/idursun/jjui/internal/jj"
 	"github.com/idursun/jjui/internal/parser"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestModel_highlightChanges(t *testing.T) {

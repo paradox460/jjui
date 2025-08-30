@@ -1,8 +1,9 @@
 package screen
 
 import (
-	"github.com/rivo/uniseg"
 	"strings"
+
+	"github.com/rivo/uniseg"
 
 	"github.com/charmbracelet/lipgloss"
 )

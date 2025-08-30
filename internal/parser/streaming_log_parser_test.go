@@ -1,11 +1,12 @@
 package parser
 
 import (
-	"github.com/idursun/jjui/test"
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/idursun/jjui/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseRowsStreaming_RequestMore(t *testing.T) {

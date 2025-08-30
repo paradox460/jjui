@@ -1,9 +1,10 @@
 package bookmark
 
 import (
-	"github.com/idursun/jjui/internal/jj"
 	"testing"
 	"time"
+
+	"github.com/idursun/jjui/internal/jj"
 
 	"github.com/idursun/jjui/test"
 

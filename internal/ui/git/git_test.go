@@ -1,13 +1,14 @@
 package git
 
 import (
+	"testing"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/idursun/jjui/internal/jj"
 	"github.com/idursun/jjui/test"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func Test_Push(t *testing.T) {

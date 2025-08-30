@@ -1,9 +1,10 @@
 package screen
 
 import (
+	"testing"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func Test_paramToStyle(t *testing.T) {

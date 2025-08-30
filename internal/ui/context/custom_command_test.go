@@ -1,9 +1,10 @@
 package context
 
 import (
+	"testing"
+
 	"github.com/idursun/jjui/internal/config"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestLoad_CustomCommands(t *testing.T) {

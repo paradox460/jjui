@@ -2,12 +2,13 @@ package parser
 
 import (
 	"bufio"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/idursun/jjui/internal/screen"
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/idursun/jjui/internal/screen"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTraceStraightLine(t *testing.T) {

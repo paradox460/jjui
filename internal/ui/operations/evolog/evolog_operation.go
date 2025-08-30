@@ -2,6 +2,7 @@ package evolog
 
 import (
 	"bytes"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/idursun/jjui/internal/parser"
 	"github.com/idursun/jjui/internal/ui/common"

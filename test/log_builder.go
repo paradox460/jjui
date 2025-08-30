@@ -3,9 +3,10 @@ package test
 import (
 	"bufio"
 	"fmt"
+	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
-	"strings"
 )
 
 type part int

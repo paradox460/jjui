@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"github.com/idursun/jjui/internal/screen"
 	"io"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/idursun/jjui/internal/screen"
 )
 
 type ControlMsg int

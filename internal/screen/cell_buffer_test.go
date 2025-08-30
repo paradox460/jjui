@@ -1,8 +1,9 @@
 package screen
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStacked_OverlappingDoubleWidth(t *testing.T) {

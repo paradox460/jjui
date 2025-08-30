@@ -1,12 +1,13 @@
 package diff
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/idursun/jjui/internal/config"
 	"github.com/idursun/jjui/internal/ui/common"
-	"strings"
 )
 
 type Model struct {

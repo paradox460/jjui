@@ -3,11 +3,12 @@ package test
 import (
 	"bytes"
 	"context"
-	appContext "github.com/idursun/jjui/internal/ui/context"
 	"io"
 	"slices"
 	"sync"
 	"testing"
+
+	appContext "github.com/idursun/jjui/internal/ui/context"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/idursun/jjui/internal/ui/common"

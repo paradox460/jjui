@@ -2,10 +2,11 @@ package bookmarks
 
 import (
 	"fmt"
-	"github.com/idursun/jjui/internal/ui/common/menu"
 	"math"
 	"slices"
 	"strings"
+
+	"github.com/idursun/jjui/internal/ui/common/menu"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"

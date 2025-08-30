@@ -1,8 +1,9 @@
 package revset
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetLastToken(t *testing.T) {

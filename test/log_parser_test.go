@@ -1,11 +1,12 @@
 package test
 
 import (
-	"github.com/idursun/jjui/internal/parser"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/idursun/jjui/internal/parser"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParser_Parse(t *testing.T) {

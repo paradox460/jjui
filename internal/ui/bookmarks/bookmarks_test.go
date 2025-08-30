@@ -1,10 +1,11 @@
 package bookmarks
 
 import (
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/stretchr/testify/assert"
 	"slices"
 	"testing"
+
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDistanceMap(t *testing.T) {

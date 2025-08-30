@@ -2,10 +2,11 @@ package oplog
 
 import (
 	"fmt"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/idursun/jjui/internal/ui/common"
 	"io"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/idursun/jjui/internal/ui/common"
 )
 
 type iterator struct {

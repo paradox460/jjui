@@ -2,10 +2,11 @@ package context
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/BurntSushi/toml"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"strings"
 )
 
 type CustomCommand interface {

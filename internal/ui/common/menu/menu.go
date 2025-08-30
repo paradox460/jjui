@@ -2,6 +2,7 @@ package menu
 
 import (
 	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"

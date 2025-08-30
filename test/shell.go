@@ -1,11 +1,12 @@
 package test
 
 import (
+	"reflect"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/idursun/jjui/internal/ui/common"
 	"github.com/idursun/jjui/internal/ui/confirmation"
-	"reflect"
-	"time"
 )
 
 type teaModelLike interface {

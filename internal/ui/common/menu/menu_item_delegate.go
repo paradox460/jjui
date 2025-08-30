@@ -2,10 +2,11 @@ package menu
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"io"
 )
 
 type MenuItem interface {

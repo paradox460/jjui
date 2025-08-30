@@ -1,6 +1,8 @@
 package customcommands
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -9,7 +11,6 @@ import (
 	"github.com/idursun/jjui/internal/ui/common"
 	"github.com/idursun/jjui/internal/ui/common/menu"
 	"github.com/idursun/jjui/internal/ui/context"
-	"strings"
 )
 
 type item struct {
