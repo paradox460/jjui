@@ -40,8 +40,6 @@ type Model struct {
 	revisionToSelect string
 	offScreenRows    []parser.Row
 	streamer         *graph.GraphStreamer
-	rowsChan         <-chan parser.RowBatch
-	controlChan      chan parser.ControlMsg
 	hasMore          bool
 	op               operations.Operation
 	cursor           int
