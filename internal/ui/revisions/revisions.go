@@ -84,8 +84,8 @@ type appendRowsBatchMsg struct {
 }
 
 func (m *Model) IsFocused() bool {
-	if _, ok := m.op.(common.Focusable); ok {
-		return true
+	if f, ok := m.op.(common.Focusable); ok {
+		return f.IsFocused()
 	}
 	return false
 }
