@@ -21,16 +21,19 @@ type viewRange struct {
 }
 
 type Model struct {
-	tag              int
-	viewRange        *viewRange
-	help             help.Model
-	width            int
-	height           int
-	content          string
-	contentLineCount int
-	context          *context.MainContext
-	keyMap           config.KeyMappings[key.Binding]
-	borderStyle      lipgloss.Style
+	tag                     int
+	previewVisible          bool
+	previewAtBottom         bool
+	previewWindowPercentage float64
+	viewRange               *viewRange
+	help                    help.Model
+	width                   int
+	height                  int
+	content                 string
+	contentLineCount        int
+	context                 *context.MainContext
+	keyMap                  config.KeyMappings[key.Binding]
+	borderStyle             lipgloss.Style
 }
 
 const DebounceTime = 50 * time.Millisecond
@@ -69,6 +72,36 @@ func (m *Model) SetHeight(h int) {
 
 func (m *Model) Init() tea.Cmd {
 	return nil
+}
+
+func (m *Model) Visible() bool {
+	return m.previewVisible
+}
+
+func (m *Model) SetVisible(visible bool) {
+	m.previewVisible = visible
+	if m.previewVisible {
+		m.reset()
+	}
+}
+
+func (m *Model) ToggleVisible() {
+	m.previewVisible = !m.previewVisible
+	if m.previewVisible {
+		m.reset()
+	}
+}
+
+func (m *Model) TogglePosition() {
+	m.previewAtBottom = !m.previewAtBottom
+}
+
+func (m *Model) AtBottom() bool {
+	return m.previewAtBottom
+}
+
+func (m *Model) WindowPercentage() float64 {
+	return m.previewWindowPercentage
 }
 
 func (m *Model) updatePreviewContent(content string) {
@@ -173,15 +206,32 @@ func (m *Model) reset() {
 	m.viewRange.start, m.viewRange.end = 0, m.height
 }
 
+func (m *Model) Expand() {
+	m.previewWindowPercentage += config.Current.Preview.WidthIncrementPercentage
+	if m.previewWindowPercentage > 95 {
+		m.previewWindowPercentage = 95
+	}
+}
+
+func (m *Model) Shrink() {
+	m.previewWindowPercentage -= config.Current.Preview.WidthIncrementPercentage
+	if m.previewWindowPercentage < 10 {
+		m.previewWindowPercentage = 10
+	}
+}
+
 func New(context *context.MainContext) Model {
 	borderStyle := common.DefaultPalette.GetBorder("preview border", lipgloss.NormalBorder())
 	borderStyle = borderStyle.Inherit(common.DefaultPalette.Get("preview text"))
 
 	return Model{
-		viewRange:   &viewRange{start: 0, end: 0},
-		context:     context,
-		keyMap:      config.Current.GetKeyMap(),
-		help:        help.New(),
-		borderStyle: borderStyle,
+		viewRange:               &viewRange{start: 0, end: 0},
+		context:                 context,
+		keyMap:                  config.Current.GetKeyMap(),
+		help:                    help.New(),
+		borderStyle:             borderStyle,
+		previewAtBottom:         config.Current.Preview.ShowAtBottom,
+		previewVisible:          config.Current.Preview.ShowAtStart,
+		previewWindowPercentage: config.Current.Preview.WidthPercentage,
 	}
 }

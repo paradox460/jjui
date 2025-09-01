@@ -32,23 +32,20 @@ import (
 )
 
 type Model struct {
-	revisions               *revisions.Model
-	oplog                   *oplog.Model
-	revsetModel             *revset.Model
-	previewModel            *preview.Model
-	previewVisible          bool
-	previewAtBottom         bool
-	previewWindowPercentage float64
-	diff                    *diff.Model
-	leader                  *leader.Model
-	flash                   *flash.Model
-	state                   common.State
-	status                  *status.Model
-	width                   int
-	height                  int
-	context                 *context.MainContext
-	keyMap                  config.KeyMappings[key.Binding]
-	stacked                 tea.Model
+	revisions    *revisions.Model
+	oplog        *oplog.Model
+	revsetModel  *revset.Model
+	previewModel *preview.Model
+	diff         *diff.Model
+	leader       *leader.Model
+	flash        *flash.Model
+	state        common.State
+	status       *status.Model
+	width        int
+	height       int
+	context      *context.MainContext
+	keyMap       config.KeyMappings[key.Binding]
+	stacked      tea.Model
 }
 
 type triggerAutoRefreshMsg struct{}
@@ -161,24 +158,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Preview.Mode, m.keyMap.Preview.ToggleBottom):
 			if key.Matches(msg, m.keyMap.Preview.ToggleBottom) {
-				m.previewAtBottom = !m.previewAtBottom
-				if m.previewVisible {
+				m.previewModel.TogglePosition()
+				if m.previewModel.Visible() {
 					return m, tea.Batch(cmds...)
 				}
 			}
-			m.previewVisible = !m.previewVisible
+			m.previewModel.ToggleVisible()
 			cmds = append(cmds, common.SelectionChanged)
 			return m, tea.Batch(cmds...)
-		case key.Matches(msg, m.keyMap.Preview.Expand) && m.previewVisible:
-			m.previewWindowPercentage += config.Current.Preview.WidthIncrementPercentage
-			if m.previewWindowPercentage > 95 {
-				m.previewWindowPercentage = 95
-			}
-		case key.Matches(msg, m.keyMap.Preview.Shrink) && m.previewVisible:
-			m.previewWindowPercentage -= config.Current.Preview.WidthIncrementPercentage
-			if m.previewWindowPercentage < 10 {
-				m.previewWindowPercentage = 10
-			}
+		case key.Matches(msg, m.keyMap.Preview.Expand) && m.previewModel.Visible():
+			m.previewModel.Expand()
+		case key.Matches(msg, m.keyMap.Preview.Shrink) && m.previewModel.Visible():
+			m.previewModel.Shrink()
 		case key.Matches(msg, m.keyMap.CustomCommands):
 			m.stacked = customcommands.NewModel(m.context, m.width, m.height)
 			cmds = append(cmds, m.stacked.Init())
@@ -192,7 +183,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			out, _ := m.context.RunCommandImmediate(jj.FilesInRevision(rev))
-			return m, common.FileSearch(m.revsetModel.Value, m.previewVisible, rev, out)
+			return m, common.FileSearch(m.revsetModel.Value, m.previewModel.Visible(), rev, out)
 		case key.Matches(msg, m.keyMap.QuickSearch) && m.oplog != nil:
 			// HACK: prevents quick search from activating in op log view
 			return m, nil
@@ -238,7 +229,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.revisions, revisionsCmd = m.revisions.Update(msg)
 		return m, tea.Batch(revsetCmd, revisionsCmd)
 	case common.ShowPreview:
-		m.previewVisible = bool(msg)
+		m.previewModel.SetVisible(bool(msg))
 		cmds = append(cmds, common.SelectionChanged)
 		return m, tea.Batch(cmds...)
 	case tea.WindowSizeMsg:
@@ -279,7 +270,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.previewVisible {
+	if m.previewModel.Visible() {
 		m.previewModel, cmd = m.previewModel.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -321,14 +312,14 @@ func (m Model) View() string {
 	footerHeight := lipgloss.Height(footer)
 
 	bottomPreviewHeight := 0
-	if m.previewVisible && m.previewAtBottom {
-		bottomPreviewHeight = int(float64(m.height) * (m.previewWindowPercentage / 100.0))
+	if m.previewModel.Visible() && m.previewModel.AtBottom() {
+		bottomPreviewHeight = int(float64(m.height) * (m.previewModel.WindowPercentage() / 100.0))
 	}
 	leftView := m.renderLeftView(footerHeight, topViewHeight, bottomPreviewHeight)
 	centerView := leftView
 
-	if m.previewVisible {
-		if m.previewAtBottom {
+	if m.previewModel.Visible() {
+		if m.previewModel.AtBottom() {
 			m.previewModel.SetWidth(m.width)
 			m.previewModel.SetHeight(bottomPreviewHeight)
 		} else {
@@ -336,7 +327,7 @@ func (m Model) View() string {
 			m.previewModel.SetHeight(m.height - footerHeight - topViewHeight)
 		}
 		previewView := m.previewModel.View()
-		if m.previewAtBottom {
+		if m.previewModel.AtBottom() {
 			centerView = lipgloss.JoinVertical(lipgloss.Top, leftView, previewView)
 		} else {
 			centerView = lipgloss.JoinHorizontal(lipgloss.Left, leftView, previewView)
@@ -369,11 +360,11 @@ func (m Model) renderLeftView(footerHeight int, topViewHeight int, bottomPreview
 	w := m.width
 	h := 0
 
-	if m.previewVisible {
-		if m.previewAtBottom {
+	if m.previewModel.Visible() {
+		if m.previewModel.AtBottom() {
 			h = bottomPreviewHeight
 		} else {
-			w = m.width - int(float64(m.width)*(m.previewWindowPercentage/100.0))
+			w = m.width - int(float64(m.width)*(m.previewModel.WindowPercentage()/100.0))
 		}
 	}
 
@@ -417,16 +408,13 @@ func New(c *context.MainContext) tea.Model {
 	previewModel := preview.New(c)
 	statusModel := status.New(c)
 	return Model{
-		context:                 c,
-		keyMap:                  config.Current.GetKeyMap(),
-		state:                   common.Loading,
-		revisions:               &revisionsModel,
-		previewModel:            &previewModel,
-		previewAtBottom:         config.Current.Preview.ShowAtBottom,
-		previewVisible:          config.Current.Preview.ShowAtStart,
-		previewWindowPercentage: config.Current.Preview.WidthPercentage,
-		status:                  &statusModel,
-		revsetModel:             revset.New(c),
-		flash:                   flash.New(c),
+		context:      c,
+		keyMap:       config.Current.GetKeyMap(),
+		state:        common.Loading,
+		revisions:    &revisionsModel,
+		previewModel: &previewModel,
+		status:       &statusModel,
+		revsetModel:  revset.New(c),
+		flash:        flash.New(c),
 	}
 }
