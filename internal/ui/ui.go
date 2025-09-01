@@ -182,7 +182,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			out, _ := m.context.RunCommandImmediate(jj.FilesInRevision(rev))
-			return m, common.FileSearch(m.revsetModel.Value, m.previewModel.Visible(), rev, out)
+			return m, common.FileSearch(m.context.CurrentRevset, m.previewModel.Visible(), rev, out)
 		case key.Matches(msg, m.keyMap.QuickSearch) && m.oplog != nil:
 			// HACK: prevents quick search from activating in op log view
 			return m, nil
@@ -221,12 +221,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return common.AutoRefreshMsg{}
 		})
 	case common.UpdateRevSetMsg:
-		var revsetCmd tea.Cmd
 		m.context.CurrentRevset = string(msg)
-		m.revsetModel, revsetCmd = m.revsetModel.Update(msg)
-		var revisionsCmd tea.Cmd
-		m.revisions, revisionsCmd = m.revisions.Update(msg)
-		return m, tea.Batch(revsetCmd, revisionsCmd)
+		return m, common.Refresh
 	case common.ShowPreview:
 		m.previewModel.SetVisible(bool(msg))
 		cmds = append(cmds, common.SelectionChanged)

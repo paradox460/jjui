@@ -18,7 +18,6 @@ type EditRevSetMsg struct {
 type Model struct {
 	*common.Sizeable
 	Editing         bool
-	Value           string
 	autoComplete    *autocompletion.AutoCompletionInput
 	keymap          keymap
 	History         []string
@@ -72,7 +71,6 @@ func New(context *appContext.MainContext) *Model {
 		Sizeable:        &common.Sizeable{Width: 0, Height: 0},
 		context:         context,
 		Editing:         false,
-		Value:           context.CurrentRevset,
 		keymap:          keymap{},
 		autoComplete:    autoComplete,
 		History:         []string{},
@@ -128,12 +126,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		case tea.KeyEnter:
 			m.Editing = false
 			m.autoComplete.Blur()
-			m.Value = m.autoComplete.Value()
-			m.AddToHistory(m.Value)
-			if m.Value == "" {
-				m.Value = m.context.DefaultRevset
-			}
-			return m, tea.Batch(common.Close, common.UpdateRevSet(m.Value))
+			value := m.autoComplete.Value()
+			return m, tea.Batch(common.Close, common.UpdateRevSet(value))
 		case tea.KeyUp:
 			if len(m.History) > 0 {
 				if !m.historyActive {
@@ -163,10 +157,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 		}
 	case common.UpdateRevSetMsg:
-		m.Value = string(msg)
+		value := string(msg)
 		if m.Editing {
 			m.Editing = false
-			m.AddToHistory(m.Value)
+			m.AddToHistory(value)
 		}
 	case EditRevSetMsg:
 		m.Editing = true
@@ -191,8 +185,8 @@ func (m *Model) View() string {
 		w.WriteString(m.autoComplete.View())
 	} else {
 		revset := m.context.DefaultRevset
-		if m.Value != "" {
-			revset = m.Value
+		if m.context.CurrentRevset != "" {
+			revset = m.context.CurrentRevset
 		}
 		w.WriteString(m.styles.textStyle.Render(revset))
 	}
