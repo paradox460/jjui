@@ -44,6 +44,18 @@ type Model struct {
 	help    help.Model
 }
 
+func (m *Model) ShortHelp() []key.Binding {
+	return []key.Binding{
+		m.keymap.Cancel,
+		m.keymap.Apply,
+		m.menu.List.KeyMap.Filter,
+	}
+}
+
+func (m *Model) FullHelp() [][]key.Binding {
+	return [][]key.Binding{m.ShortHelp()}
+}
+
 func (m *Model) Width() int {
 	return m.menu.Width()
 }
@@ -95,7 +107,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	return m.menu.View(nil)
+	return m.menu.View()
 }
 
 func NewModel(ctx *context.MainContext, width int, height int) *Model {

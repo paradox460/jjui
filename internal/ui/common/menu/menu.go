@@ -179,12 +179,11 @@ func (m *Menu) renderKey(k key.Binding) string {
 	return lipgloss.JoinHorizontal(0, m.styles.shortcut.Render(k.Help().Key, ""), m.styles.dimmed.Render(k.Help().Desc, ""))
 }
 
-func (m *Menu) View(helpKeys []key.Binding) string {
+func (m *Menu) View() string {
 	titleView := m.styles.text.Width(m.width).Render(m.styles.title.Render(m.Title))
 	filterView := m.renderFilterView()
 	listView := m.List.View()
-	helpView := m.renderHelpView(helpKeys)
-	content := lipgloss.JoinVertical(0, titleView, "", filterView, listView, helpView)
+	content := lipgloss.JoinVertical(0, titleView, "", filterView, listView)
 	content = lipgloss.Place(m.width, m.height, 0, 0, content)
 	content = m.styles.text.Width(m.width).Height(m.height).Render(content)
 	return m.styles.border.Render(content)

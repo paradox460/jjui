@@ -50,6 +50,20 @@ type Model struct {
 	menu    menu.Menu
 }
 
+func (m *Model) ShortHelp() []key.Binding {
+	return []key.Binding{
+		m.keymap.Cancel,
+		m.keymap.Apply,
+		m.keymap.Git.Push,
+		m.keymap.Git.Fetch,
+		m.menu.List.KeyMap.Filter,
+	}
+}
+
+func (m *Model) FullHelp() [][]key.Binding {
+	return [][]key.Binding{m.ShortHelp()}
+}
+
 func (m *Model) Width() int {
 	return m.menu.Width()
 }
@@ -108,12 +122,7 @@ func (m *Model) filtered(filter string) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	helpKeys := []key.Binding{
-		m.keymap.Git.Push,
-		m.keymap.Git.Fetch,
-	}
-
-	return m.menu.View(helpKeys)
+	return m.menu.View()
 }
 
 func loadBookmarks(c context.CommandRunner, changeId string) []jj.Bookmark {
