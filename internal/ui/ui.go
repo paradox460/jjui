@@ -130,10 +130,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keyMap.Cancel) && m.state == common.Error:
 			m.state = common.Ready
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Cancel) && m.stacked != nil:
 			m.stacked = nil
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Cancel) && m.flash.Any():
 			m.flash.DeleteOldest()
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Quit) && m.isSafeToQuit():
 			return m, tea.Quit
 		case key.Matches(msg, m.keyMap.OpLog.Mode):
@@ -148,10 +151,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keyMap.Undo) && m.revisions.InNormalMode():
 			m.stacked = undo.NewModel(m.context)
 			cmds = append(cmds, m.stacked.Init())
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Bookmark.Mode) && m.revisions.InNormalMode():
 			changeIds := m.revisions.GetCommitIds()
 			m.stacked = bookmarks.NewModel(m.context, m.revisions.SelectedRevision(), changeIds, m.Width, m.Height)
 			cmds = append(cmds, m.stacked.Init())
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Help):
 			cmds = append(cmds, common.ToggleHelp)
 			return m, tea.Batch(cmds...)
@@ -167,14 +172,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Preview.Expand) && m.previewModel.Visible():
 			m.previewModel.Expand()
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Preview.Shrink) && m.previewModel.Visible():
 			m.previewModel.Shrink()
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.CustomCommands):
 			m.stacked = customcommands.NewModel(m.context, m.Width, m.Height)
 			cmds = append(cmds, m.stacked.Init())
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Leader):
 			m.leader = leader.New(m.context)
 			cmds = append(cmds, leader.InitCmd)
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.FileSearch.Toggle):
 			rev := m.revisions.SelectedRevision()
 			if rev == nil {
