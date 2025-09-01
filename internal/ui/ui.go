@@ -282,38 +282,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) View() string {
-	if m.diff != nil {
+func (m Model) updateStatus() {
+	switch {
+	case m.diff != nil:
 		m.status.SetMode("diff")
 		m.status.SetHelp(m.diff)
-		footer := m.status.View()
-		footerHeight := lipgloss.Height(footer)
+	case m.oplog != nil:
+		m.status.SetMode("oplog")
+		m.status.SetHelp(m.oplog)
+	case m.stacked != nil:
+		if s, ok := m.stacked.(help.KeyMap); ok {
+			m.status.SetHelp(s)
+		}
+	case m.leader != nil:
+		m.status.SetMode("leader")
+		m.status.SetHelp(m.leader)
+	default:
+		m.status.SetHelp(m.revisions)
+		m.status.SetMode(m.revisions.CurrentOperation().Name())
+	}
+}
+
+func (m Model) View() string {
+	m.updateStatus()
+	footer := m.status.View()
+	footerHeight := lipgloss.Height(footer)
+
+	if m.diff != nil {
 		m.diff.SetHeight(m.Height - footerHeight)
 		return lipgloss.JoinVertical(0, m.diff.View(), footer)
 	}
 
 	topView := m.revsetModel.View()
 	topViewHeight := lipgloss.Height(topView)
-
-	if m.oplog != nil {
-		m.status.SetMode("oplog")
-		m.status.SetHelp(m.oplog)
-	} else if m.stacked != nil {
-		if s, ok := m.stacked.(help.KeyMap); ok {
-			m.status.SetHelp(s)
-		}
-	} else {
-		m.status.SetHelp(m.revisions)
-		m.status.SetMode(m.revisions.CurrentOperation().Name())
-	}
-
-	if m.leader != nil {
-		m.status.SetMode("leader")
-		m.status.SetHelp(m.leader)
-	}
-
-	footer := m.status.View()
-	footerHeight := lipgloss.Height(footer)
 
 	bottomPreviewHeight := 0
 	if m.previewModel.Visible() && m.previewModel.AtBottom() {
@@ -345,6 +346,7 @@ func (m Model) View() string {
 		sy := (m.Height - h) / 2
 		centerView = screen.Stacked(centerView, stackedView, sx, sy)
 	}
+
 	full := lipgloss.JoinVertical(0, topView, centerView, footer)
 	flashMessageView := m.flash.View()
 	if flashMessageView != "" {
