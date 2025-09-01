@@ -35,6 +35,7 @@ import (
 )
 
 type Model struct {
+	*common.Sizeable
 	rows             []parser.Row
 	tag              uint64
 	revisionToSelect string
@@ -43,8 +44,6 @@ type Model struct {
 	hasMore          bool
 	op               operations.Operation
 	cursor           int
-	width            int
-	height           int
 	context          *appContext.MainContext
 	keymap           config.KeyMappings[key.Binding]
 	output           string
@@ -96,22 +95,6 @@ func (m *Model) InNormalMode() bool {
 		return true
 	}
 	return false
-}
-
-func (m *Model) Width() int {
-	return m.width
-}
-
-func (m *Model) Height() int {
-	return m.height
-}
-
-func (m *Model) SetWidth(w int) {
-	m.width = w
-}
-
-func (m *Model) SetHeight(h int) {
-	m.height = h
 }
 
 func (m *Model) ShortHelp() []key.Binding {
@@ -338,7 +321,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			case key.Matches(msg, m.keymap.Details.Mode):
 				m.op, cmd = details.NewOperation(m.context, m.SelectedRevision())
 			case key.Matches(msg, m.keymap.InlineDescribe.Mode):
-				m.op, cmd = describe.NewOperation(m.context, m.SelectedRevision().GetChangeId(), m.width)
+				m.op, cmd = describe.NewOperation(m.context, m.SelectedRevision().GetChangeId(), m.Width)
 				return m, cmd
 			case key.Matches(msg, m.keymap.New):
 				cmd = m.context.RunCommand(jj.New(m.SelectedRevisions()), common.RefreshAndSelect("@"))
@@ -365,7 +348,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				currentRevision := m.SelectedRevision().GetChangeId()
 				return m, m.context.RunInteractiveCommand(jj.Describe(currentRevision), common.Refresh)
 			case key.Matches(msg, m.keymap.Evolog.Mode):
-				m.op, cmd = evolog.NewOperation(m.context, m.SelectedRevision(), m.width, m.height)
+				m.op, cmd = evolog.NewOperation(m.context, m.SelectedRevision(), m.Width, m.Height)
 			case key.Matches(msg, m.keymap.Diff):
 				return m, func() tea.Msg {
 					changeId := m.SelectedRevision().GetChangeId()
@@ -470,26 +453,26 @@ func (m *Model) updateGraphRows(rows []parser.Row, selectedRevision string) {
 func (m *Model) View() string {
 	if len(m.rows) == 0 {
 		if m.isLoading {
-			return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, "loading")
+			return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, "loading")
 		}
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, "(no matching revisions)")
+		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, "(no matching revisions)")
 	}
 
-	renderer := graph.NewDefaultRowIterator(m.rows, graph.WithWidth(m.width), graph.WithStylePrefix("revisions"), graph.WithSelections(m.context.GetSelectedRevisions()))
+	renderer := graph.NewDefaultRowIterator(m.rows, graph.WithWidth(m.Width), graph.WithStylePrefix("revisions"), graph.WithSelections(m.context.GetSelectedRevisions()))
 	renderer.Op = m.op
 	renderer.Cursor = m.cursor
 	renderer.SearchText = m.quickSearch
 	renderer.AceJumpPrefix = m.aceJump.Prefix()
 
-	m.w.SetSize(m.width, m.height)
+	m.w.SetSize(m.Width, m.Height)
 	if config.Current.UI.Tracer.Enabled {
 		start, end := m.w.FirstRowIndex(), m.w.LastRowIndex()+1 // +1 because the last row is inclusive in the view range
 		log.Println("Visible row range:", start, end, "Cursor:", m.cursor, "Total rows:", len(m.rows))
 		renderer.Tracer = parser.NewTracer(m.rows, m.cursor, start, end)
 	}
 	output := m.w.Render(renderer)
-	output = m.textStyle.MaxWidth(m.width).Render(output)
-	return lipgloss.Place(m.width, m.height, 0, 0, output)
+	output = m.textStyle.MaxWidth(m.Width).Render(output)
+	return lipgloss.Place(m.Width, m.Height, 0, 0, output)
 }
 
 func (m *Model) load(revset string, selectedRevision string) tea.Cmd {
@@ -599,6 +582,7 @@ func New(c *appContext.MainContext) Model {
 	keymap := config.Current.GetKeyMap()
 	w := graph.NewRenderer(20, 10)
 	return Model{
+		Sizeable:      &common.Sizeable{Width: 20, Height: 10},
 		context:       c,
 		w:             w,
 		keymap:        keymap,
@@ -606,8 +590,6 @@ func New(c *appContext.MainContext) Model {
 		offScreenRows: nil,
 		op:            operations.NewDefault(),
 		cursor:        0,
-		width:         20,
-		height:        10,
 		textStyle:     common.DefaultPalette.Get("revisions text"),
 	}
 }

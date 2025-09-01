@@ -21,14 +21,13 @@ type viewRange struct {
 }
 
 type Model struct {
+	*common.Sizeable
 	tag                     int
 	previewVisible          bool
 	previewAtBottom         bool
 	previewWindowPercentage float64
 	viewRange               *viewRange
 	help                    help.Model
-	width                   int
-	height                  int
 	content                 string
 	contentLineCount        int
 	context                 *context.MainContext
@@ -53,21 +52,9 @@ type refreshPreviewContentMsg struct {
 	Tag int
 }
 
-func (m *Model) Width() int {
-	return m.width
-}
-
-func (m *Model) Height() int {
-	return m.height
-}
-
-func (m *Model) SetWidth(w int) {
-	m.width = w
-}
-
 func (m *Model) SetHeight(h int) {
 	m.viewRange.end = min(m.viewRange.start+h-3, m.contentLineCount)
-	m.height = h
+	m.Height = h
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -164,7 +151,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 		case key.Matches(msg, m.keyMap.Preview.HalfPageDown):
 			contentHeight := m.contentLineCount
-			halfPageSize := m.height / 2
+			halfPageSize := m.Height / 2
 			if halfPageSize+m.viewRange.end > contentHeight {
 				halfPageSize = contentHeight - m.viewRange.end
 			}
@@ -172,7 +159,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			m.viewRange.start += halfPageSize
 			m.viewRange.end += halfPageSize
 		case key.Matches(msg, m.keyMap.Preview.HalfPageUp):
-			halfPageSize := min(m.height/2, m.viewRange.start)
+			halfPageSize := min(m.Height/2, m.viewRange.start)
 			m.viewRange.start -= halfPageSize
 			m.viewRange.end -= halfPageSize
 		}
@@ -191,19 +178,19 @@ func (m *Model) View() string {
 			if current > m.viewRange.start {
 				w.WriteString("\n")
 			}
-			w.WriteString(lipgloss.NewStyle().MaxWidth(m.width - 2).Render(line))
+			w.WriteString(lipgloss.NewStyle().MaxWidth(m.Width - 2).Render(line))
 		}
 		current++
 		if current > m.viewRange.end {
 			break
 		}
 	}
-	view := lipgloss.Place(m.width-2, m.height-2, 0, 0, w.String())
+	view := lipgloss.Place(m.Width-2, m.Height-2, 0, 0, w.String())
 	return m.borderStyle.Render(view)
 }
 
 func (m *Model) reset() {
-	m.viewRange.start, m.viewRange.end = 0, m.height
+	m.viewRange.start, m.viewRange.end = 0, m.Height
 }
 
 func (m *Model) Expand() {
@@ -225,6 +212,7 @@ func New(context *context.MainContext) Model {
 	borderStyle = borderStyle.Inherit(common.DefaultPalette.Get("preview text"))
 
 	return Model{
+		Sizeable:                &common.Sizeable{Width: 0, Height: 0},
 		viewRange:               &viewRange{start: 0, end: 0},
 		context:                 context,
 		keyMap:                  config.Current.GetKeyMap(),

@@ -28,14 +28,13 @@ const (
 )
 
 type Operation struct {
+	*common.Sizeable
 	context  *context.MainContext
 	w        *graph.Renderer
 	revision *jj.Commit
 	mode     mode
 	rows     []parser.Row
 	cursor   int
-	width    int
-	height   int
 	keyMap   config.KeyMappings[key.Binding]
 	target   *jj.Commit
 	styles   styles
@@ -156,12 +155,12 @@ func (o *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) str
 	if len(o.rows) == 0 {
 		return "loading"
 	}
-	h := min(o.height-5, len(o.rows)*2)
-	o.w.SetSize(o.width, h)
-	renderer := graph.NewDefaultRowIterator(o.rows, graph.WithWidth(o.width), graph.WithStylePrefix("evolog"))
+	h := min(o.Height-5, len(o.rows)*2)
+	o.w.SetSize(o.Width, h)
+	renderer := graph.NewDefaultRowIterator(o.rows, graph.WithWidth(o.Width), graph.WithStylePrefix("evolog"))
 	renderer.Cursor = o.cursor
 	content := o.w.Render(renderer)
-	content = lipgloss.PlaceHorizontal(o.width, lipgloss.Left, content)
+	content = lipgloss.PlaceHorizontal(o.Width, lipgloss.Left, content)
 	return content
 }
 
@@ -189,14 +188,13 @@ func NewOperation(context *context.MainContext, revision *jj.Commit, width int, 
 	}
 	w := graph.NewRenderer(width, height)
 	o := &Operation{
+		Sizeable: &common.Sizeable{Width: width, Height: height},
 		context:  context,
 		keyMap:   config.Current.GetKeyMap(),
 		w:        w,
 		revision: revision,
 		rows:     nil,
 		cursor:   0,
-		width:    width,
-		height:   height,
 		styles:   styles,
 	}
 	return o, o.load

@@ -32,6 +32,7 @@ import (
 )
 
 type Model struct {
+	*common.Sizeable
 	revisions    *revisions.Model
 	oplog        *oplog.Model
 	revsetModel  *revset.Model
@@ -41,8 +42,6 @@ type Model struct {
 	flash        *flash.Model
 	state        common.State
 	status       *status.Model
-	width        int
-	height       int
 	context      *context.MainContext
 	keyMap       config.KeyMappings[key.Binding]
 	stacked      tea.Model
@@ -138,20 +137,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keyMap.Quit) && m.isSafeToQuit():
 			return m, tea.Quit
 		case key.Matches(msg, m.keyMap.OpLog.Mode):
-			m.oplog = oplog.New(m.context, m.width, m.height)
+			m.oplog = oplog.New(m.context, m.Width, m.Height)
 			return m, m.oplog.Init()
 		case key.Matches(msg, m.keyMap.Revset) && m.revisions.InNormalMode():
 			m.revsetModel, _ = m.revsetModel.Update(revset.EditRevSetMsg{Clear: m.state != common.Error})
 			return m, nil
 		case key.Matches(msg, m.keyMap.Git.Mode) && m.revisions.InNormalMode():
-			m.stacked = git.NewModel(m.context, m.revisions.SelectedRevision(), m.width, m.height)
+			m.stacked = git.NewModel(m.context, m.revisions.SelectedRevision(), m.Width, m.Height)
 			return m, m.stacked.Init()
 		case key.Matches(msg, m.keyMap.Undo) && m.revisions.InNormalMode():
 			m.stacked = undo.NewModel(m.context)
 			cmds = append(cmds, m.stacked.Init())
 		case key.Matches(msg, m.keyMap.Bookmark.Mode) && m.revisions.InNormalMode():
 			changeIds := m.revisions.GetCommitIds()
-			m.stacked = bookmarks.NewModel(m.context, m.revisions.SelectedRevision(), changeIds, m.width, m.height)
+			m.stacked = bookmarks.NewModel(m.context, m.revisions.SelectedRevision(), changeIds, m.Width, m.Height)
 			cmds = append(cmds, m.stacked.Init())
 		case key.Matches(msg, m.keyMap.Help):
 			cmds = append(cmds, common.ToggleHelp)
@@ -171,7 +170,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keyMap.Preview.Shrink) && m.previewModel.Visible():
 			m.previewModel.Shrink()
 		case key.Matches(msg, m.keyMap.CustomCommands):
-			m.stacked = customcommands.NewModel(m.context, m.width, m.height)
+			m.stacked = customcommands.NewModel(m.context, m.Width, m.Height)
 			cmds = append(cmds, m.stacked.Init())
 		case key.Matches(msg, m.keyMap.Leader):
 			m.leader = leader.New(m.context)
@@ -204,16 +203,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case common.ToggleHelpMsg:
 		if m.stacked == nil {
 			m.stacked = helppage.New(m.context)
-			if p, ok := m.stacked.(common.Sizable); ok {
-				p.SetHeight(m.height - 2)
-				p.SetWidth(m.width)
+			if p, ok := m.stacked.(common.ISizeable); ok {
+				p.SetHeight(m.Height - 2)
+				p.SetWidth(m.Width)
 			}
 		} else {
 			m.stacked = nil
 		}
 		return m, nil
 	case common.ShowDiffMsg:
-		m.diff = diff.New(string(msg), m.width, m.height)
+		m.diff = diff.New(string(msg), m.Width, m.Height)
 		return m, m.diff.Init()
 	case common.UpdateRevisionsSuccessMsg:
 		m.state = common.Ready
@@ -233,16 +232,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, common.SelectionChanged)
 		return m, tea.Batch(cmds...)
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		if s, ok := m.stacked.(common.Sizable); ok {
-			s.SetWidth(m.width - 2)
-			s.SetHeight(m.height - 2)
+		m.Width = msg.Width
+		m.Height = msg.Height
+		if s, ok := m.stacked.(common.ISizeable); ok {
+			s.SetWidth(m.Width - 2)
+			s.SetHeight(m.Height - 2)
 		}
-		m.status.SetWidth(m.width)
-		m.revisions.SetHeight(m.height)
-		m.revisions.SetWidth(m.width)
-		m.revsetModel.SetWidth(m.width)
+		m.status.SetWidth(m.Width)
+		m.revisions.SetHeight(m.Height)
+		m.revisions.SetWidth(m.Width)
+		m.revsetModel.SetWidth(m.Width)
 		m.revsetModel.SetHeight(1)
 	}
 
@@ -284,7 +283,7 @@ func (m Model) View() string {
 		m.status.SetHelp(m.diff)
 		footer := m.status.View()
 		footerHeight := lipgloss.Height(footer)
-		m.diff.SetHeight(m.height - footerHeight)
+		m.diff.SetHeight(m.Height - footerHeight)
 		return lipgloss.JoinVertical(0, m.diff.View(), footer)
 	}
 
@@ -313,18 +312,18 @@ func (m Model) View() string {
 
 	bottomPreviewHeight := 0
 	if m.previewModel.Visible() && m.previewModel.AtBottom() {
-		bottomPreviewHeight = int(float64(m.height) * (m.previewModel.WindowPercentage() / 100.0))
+		bottomPreviewHeight = int(float64(m.Height) * (m.previewModel.WindowPercentage() / 100.0))
 	}
 	leftView := m.renderLeftView(footerHeight, topViewHeight, bottomPreviewHeight)
 	centerView := leftView
 
 	if m.previewModel.Visible() {
 		if m.previewModel.AtBottom() {
-			m.previewModel.SetWidth(m.width)
+			m.previewModel.SetWidth(m.Width)
 			m.previewModel.SetHeight(bottomPreviewHeight)
 		} else {
-			m.previewModel.SetWidth(m.width - lipgloss.Width(leftView))
-			m.previewModel.SetHeight(m.height - footerHeight - topViewHeight)
+			m.previewModel.SetWidth(m.Width - lipgloss.Width(leftView))
+			m.previewModel.SetHeight(m.Height - footerHeight - topViewHeight)
 		}
 		previewView := m.previewModel.View()
 		if m.previewModel.AtBottom() {
@@ -337,44 +336,44 @@ func (m Model) View() string {
 	if m.stacked != nil {
 		stackedView := m.stacked.View()
 		w, h := lipgloss.Size(stackedView)
-		sx := (m.width - w) / 2
-		sy := (m.height - h) / 2
+		sx := (m.Width - w) / 2
+		sy := (m.Height - h) / 2
 		centerView = screen.Stacked(centerView, stackedView, sx, sy)
 	}
 	full := lipgloss.JoinVertical(0, topView, centerView, footer)
 	flashMessageView := m.flash.View()
 	if flashMessageView != "" {
 		mw, mh := lipgloss.Size(flashMessageView)
-		full = screen.Stacked(full, flashMessageView, m.width-mw, m.height-mh-1)
+		full = screen.Stacked(full, flashMessageView, m.Width-mw, m.Height-mh-1)
 	}
 	statusFuzzyView := m.status.FuzzyView()
 	if statusFuzzyView != "" {
 		_, mh := lipgloss.Size(statusFuzzyView)
-		full = screen.Stacked(full, statusFuzzyView, 0, m.height-mh-1)
+		full = screen.Stacked(full, statusFuzzyView, 0, m.Height-mh-1)
 	}
 	return full
 }
 
 func (m Model) renderLeftView(footerHeight int, topViewHeight int, bottomPreviewHeight int) string {
 	leftView := ""
-	w := m.width
+	w := m.Width
 	h := 0
 
 	if m.previewModel.Visible() {
 		if m.previewModel.AtBottom() {
 			h = bottomPreviewHeight
 		} else {
-			w = m.width - int(float64(m.width)*(m.previewModel.WindowPercentage()/100.0))
+			w = m.Width - int(float64(m.Width)*(m.previewModel.WindowPercentage()/100.0))
 		}
 	}
 
 	if m.oplog != nil {
 		m.oplog.SetWidth(w)
-		m.oplog.SetHeight(m.height - footerHeight - topViewHeight - h)
+		m.oplog.SetHeight(m.Height - footerHeight - topViewHeight - h)
 		leftView = m.oplog.View()
 	} else {
 		m.revisions.SetWidth(w)
-		m.revisions.SetHeight(m.height - footerHeight - topViewHeight - h)
+		m.revisions.SetHeight(m.Height - footerHeight - topViewHeight - h)
 		leftView = m.revisions.View()
 	}
 	return leftView
@@ -408,6 +407,7 @@ func New(c *context.MainContext) tea.Model {
 	previewModel := preview.New(c)
 	statusModel := status.New(c)
 	return Model{
+		Sizeable:     &common.Sizeable{Width: 80, Height: 24},
 		context:      c,
 		keyMap:       config.Current.GetKeyMap(),
 		state:        common.Loading,

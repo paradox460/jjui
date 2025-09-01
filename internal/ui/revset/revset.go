@@ -16,6 +16,7 @@ type EditRevSetMsg struct {
 }
 
 type Model struct {
+	*common.Sizeable
 	Editing         bool
 	Value           string
 	autoComplete    *autocompletion.AutoCompletionInput
@@ -27,23 +28,6 @@ type Model struct {
 	MaxHistoryItems int
 	context         *appContext.MainContext
 	styles          styles
-	width, height   int
-}
-
-func (m *Model) Width() int {
-	return m.width
-}
-
-func (m *Model) Height() int {
-	return m.height
-}
-
-func (m *Model) SetWidth(w int) {
-	m.width = w
-}
-
-func (m *Model) SetHeight(h int) {
-	m.height = h
 }
 
 type styles struct {
@@ -85,6 +69,7 @@ func New(context *appContext.MainContext) *Model {
 	autoComplete.Focus()
 
 	return &Model{
+		Sizeable:        &common.Sizeable{Width: 0, Height: 0},
 		context:         context,
 		Editing:         false,
 		Value:           context.CurrentRevset,
@@ -211,5 +196,5 @@ func (m *Model) View() string {
 		}
 		w.WriteString(m.styles.textStyle.Render(revset))
 	}
-	return lipgloss.Place(m.width, m.height, 0, 0, w.String(), lipgloss.WithWhitespaceBackground(m.styles.textStyle.GetBackground()))
+	return lipgloss.Place(m.Width, m.Height, 0, 0, w.String(), lipgloss.WithWhitespaceBackground(m.styles.textStyle.GetBackground()))
 }

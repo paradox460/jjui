@@ -18,13 +18,12 @@ type updateOpLogMsg struct {
 }
 
 type Model struct {
+	*common.Sizeable
 	context   *context.MainContext
 	w         *graph.Renderer
 	rows      []row
 	cursor    int
 	keymap    config.KeyMappings[key.Binding]
-	width     int
-	height    int
 	textStyle lipgloss.Style
 }
 
@@ -34,22 +33,6 @@ func (m *Model) ShortHelp() []key.Binding {
 
 func (m *Model) FullHelp() [][]key.Binding {
 	return [][]key.Binding{m.ShortHelp()}
-}
-
-func (m *Model) Width() int {
-	return m.width
-}
-
-func (m *Model) Height() int {
-	return m.height
-}
-
-func (m *Model) SetWidth(w int) {
-	m.width = w
-}
-
-func (m *Model) SetHeight(h int) {
-	m.height = h
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -94,15 +77,15 @@ func (m *Model) updateSelection() tea.Cmd {
 
 func (m *Model) View() string {
 	if m.rows == nil {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, "loading")
+		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, "loading")
 	}
 
 	m.w.Reset()
-	m.w.SetSize(m.width, m.height)
-	renderer := newIterator(m.rows, m.cursor, m.width)
+	m.w.SetSize(m.Width, m.Height)
+	renderer := newIterator(m.rows, m.cursor, m.Width)
 	content := m.w.Render(renderer)
-	content = lipgloss.PlaceHorizontal(m.width, lipgloss.Left, content)
-	return m.textStyle.MaxWidth(m.width).Render(content)
+	content = lipgloss.PlaceHorizontal(m.Width, lipgloss.Left, content)
+	return m.textStyle.MaxWidth(m.Width).Render(content)
 }
 
 func (m *Model) load() tea.Cmd {
@@ -121,13 +104,12 @@ func New(context *context.MainContext, width int, height int) *Model {
 	keyMap := config.Current.GetKeyMap()
 	w := graph.NewRenderer(width, height)
 	return &Model{
+		Sizeable:  &common.Sizeable{Width: width, Height: height},
 		context:   context,
 		w:         w,
 		keymap:    keyMap,
 		rows:      nil,
 		cursor:    0,
-		width:     width,
-		height:    height,
 		textStyle: common.DefaultPalette.Get("oplog text"),
 	}
 }
