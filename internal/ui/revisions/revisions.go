@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 
 	"github.com/idursun/jjui/internal/ui/ace_jump"
+	"github.com/idursun/jjui/internal/ui/common/list"
+	"github.com/idursun/jjui/internal/ui/common/models"
 	"github.com/idursun/jjui/internal/ui/operations/duplicate"
 	"github.com/idursun/jjui/internal/ui/operations/revert"
 	"github.com/idursun/jjui/internal/ui/operations/set_parents"
@@ -37,6 +39,7 @@ import (
 
 type Model struct {
 	*common.Sizeable
+	*list.CheckableList[models.RevisionItem]
 	rows             []parser.Row
 	tag              atomic.Uint64
 	revisionToSelect string
@@ -577,6 +580,7 @@ func New(c *appContext.MainContext) Model {
 	w := graph.NewRenderer(20, 10)
 	return Model{
 		Sizeable:      &common.Sizeable{Width: 20, Height: 10},
+		CheckableList: list.NewCheckableList[models.RevisionItem](),
 		context:       c,
 		w:             w,
 		keymap:        keymap,
