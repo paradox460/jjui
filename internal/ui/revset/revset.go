@@ -157,10 +157,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 		}
 	case common.UpdateRevSetMsg:
-		value := string(msg)
 		if m.Editing {
 			m.Editing = false
-			m.AddToHistory(value)
 		}
 	case EditRevSetMsg:
 		m.Editing = true
