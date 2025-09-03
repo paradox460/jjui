@@ -566,7 +566,7 @@ func (m *Model) GetCommitIds() []string {
 
 func New(c *appContext.MainContext) Model {
 	keymap := config.Current.GetKeyMap()
-	l := list.NewCheckableList[*models.RevisionItem]()
+	l := c.Revisions
 	size := common.NewSizeable(20, 10)
 
 	rl := &RevisionList{
