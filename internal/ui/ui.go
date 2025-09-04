@@ -72,7 +72,8 @@ func (m Model) handleFocusInputMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		}
 		if m.oplog != nil {
 			m.oplog = nil
-			return m, common.SelectionChanged, true
+			m.context.ActiveList = context.ListRevisions
+			return m, nil, true
 		}
 		return m, nil, false
 	}
@@ -167,7 +168,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.previewModel.ToggleVisible()
-			cmds = append(cmds, common.SelectionChanged)
 			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keyMap.Preview.Expand) && m.previewModel.Visible():
 			m.previewModel.Expand()
@@ -198,7 +198,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Suspend
 		default:
 			for _, command := range m.context.CustomCommands {
-				if !command.IsApplicableTo(m.context.SelectedItem) {
+				if !command.IsApplicableTo(m.context) {
 					continue
 				}
 				if key.Matches(msg, command.Binding()) {
@@ -230,7 +230,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, common.Refresh
 	case common.ShowPreview:
 		m.previewModel.SetVisible(bool(msg))
-		cmds = append(cmds, common.SelectionChanged)
 		return m, tea.Batch(cmds...)
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width

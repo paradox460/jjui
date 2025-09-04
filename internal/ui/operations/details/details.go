@@ -170,18 +170,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keyMap.Up):
 			m.CursorUp()
-			return m, m.context.SetSelectedItem(context.SelectedFile{
-				ChangeId: m.revision.GetChangeId(),
-				CommitId: m.revision.CommitId,
-				File:     m.Current().FileName,
-			})
+			return m, nil
 		case key.Matches(msg, m.keyMap.Down):
 			m.CursorDown()
-			return m, m.context.SetSelectedItem(context.SelectedFile{
-				ChangeId: m.revision.GetChangeId(),
-				CommitId: m.revision.CommitId,
-				File:     m.Current().FileName,
-			})
+			return m, nil
 		case key.Matches(msg, m.keyMap.Cancel), key.Matches(msg, m.keyMap.Details.Close):
 			return m, common.Close
 		case key.Matches(msg, m.keyMap.Details.Diff):
@@ -254,11 +246,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			current := m.Current()
 			current.Toggle()
 			m.CursorDown()
-			return m, m.context.SetSelectedItem(context.SelectedFile{
-				ChangeId: m.revision.GetChangeId(),
-				CommitId: m.revision.CommitId,
-				File:     current.FileName,
-			})
+			return m, nil
 		case key.Matches(msg, m.keyMap.Details.RevisionsChangingFile):
 			if current := m.Current(); current != nil {
 				return m, tea.Batch(common.Close, common.UpdateRevSet(fmt.Sprintf("files(%s)", jj.EscapeFileName(current.FileName))))
