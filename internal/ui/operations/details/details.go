@@ -103,7 +103,7 @@ type Model struct {
 	keyMap       config.KeyMappings[key.Binding]
 }
 
-func (m Model) ShortHelp() []key.Binding {
+func (m *Model) ShortHelp() []key.Binding {
 	if m.confirmation != nil {
 		return m.confirmation.ShortHelp()
 	}
@@ -119,15 +119,11 @@ func (m Model) ShortHelp() []key.Binding {
 	}
 }
 
-func (m Model) FullHelp() [][]key.Binding {
+func (m *Model) FullHelp() [][]key.Binding {
 	return [][]key.Binding{m.ShortHelp()}
 }
 
-type updateCommitStatusMsg struct {
-	summary string
-}
-
-func New(context *context.MainContext, revision *jj.Commit) Model {
+func New(context *context.MainContext, revision *jj.Commit) *Model {
 	keyMap := config.Current.GetKeyMap()
 
 	s := styles{
@@ -148,7 +144,7 @@ func New(context *context.MainContext, revision *jj.Commit) Model {
 		styles:        s,
 	}
 	dl.renderer = list.NewRenderer[*models.RevisionFileItem](dl.List, dl.RenderItem, dl.GetItemHeight, common.NewSizeable(5, 5))
-	return Model{
+	return &Model{
 		Sizeable:    size,
 		DetailsList: dl,
 		revision:    revision,
@@ -160,9 +156,11 @@ func New(context *context.MainContext, revision *jj.Commit) Model {
 
 func (m Model) Init() tea.Cmd {
 	return m.load(m.revision.GetChangeId())
+func (m *Model) Init() tea.Cmd {
+	return tea.WindowSize()
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.confirmation != nil {
@@ -300,7 +298,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) getSelectedFiles() ([]string, bool) {
+func (m *Model) getSelectedFiles() ([]string, bool) {
 	selectedFiles := make([]string, 0)
 	checkedItems := m.GetCheckedItems()
 
@@ -317,7 +315,7 @@ func (m Model) getSelectedFiles() ([]string, bool) {
 	return selectedFiles, false
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	confirmationView := ""
 	ch := 0
 	if m.confirmation != nil {
