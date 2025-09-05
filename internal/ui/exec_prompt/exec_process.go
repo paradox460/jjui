@@ -1,4 +1,4 @@
-package exec_process
+package exec_prompt
 
 import (
 	"bufio"
@@ -14,27 +14,11 @@ import (
 	"github.com/idursun/jjui/internal/ui/context"
 )
 
-func ExecMsgFromLine(prompt string, line string) common.ExecMsg {
-	line = strings.TrimSpace(line)
-	switch prompt {
-	case common.ExecShell.Prompt:
-		return common.ExecMsg{
-			Line: line,
-			Mode: common.ExecShell,
-		}
-	default:
-		return common.ExecMsg{
-			Line: line,
-			Mode: common.ExecJJ,
-		}
-	}
-}
-
-func ExecLine(ctx *context.MainContext, msg common.ExecMsg) tea.Cmd {
+func ExecLine(ctx *context.MainContext, mode common.ExecMode, line string) tea.Cmd {
 	replacements := ctx.CreateReplacements()
-	switch msg.Mode {
+	switch mode {
 	case common.ExecJJ:
-		args := strings.Fields(msg.Line)
+		args := strings.Fields(line)
 		args = jj.TemplatedArgs(args, replacements)
 		return execProgram("jj", args, ctx.Location, nil)
 	case common.ExecShell:
@@ -44,7 +28,7 @@ func ExecLine(ctx *context.MainContext, msg common.ExecMsg) tea.Cmd {
 		if len(program) == 0 {
 			program = "sh"
 		}
-		args := []string{"-c", msg.Line}
+		args := []string{"-c", line}
 		return execProgram(program, args, ctx.Location, replacements)
 	}
 	return nil

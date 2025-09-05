@@ -2,64 +2,51 @@ package oplog
 
 import (
 	"bytes"
-	"fmt"
-	"io"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/idursun/jjui/internal/config"
 	"github.com/idursun/jjui/internal/jj"
+	"github.com/idursun/jjui/internal/models"
 	"github.com/idursun/jjui/internal/ui/common"
 	"github.com/idursun/jjui/internal/ui/common/list"
-	"github.com/idursun/jjui/internal/ui/common/models"
 	"github.com/idursun/jjui/internal/ui/context"
+	"github.com/idursun/jjui/internal/ui/view"
 )
 
 type updateOpLogMsg struct {
 	Rows []*models.OperationLogItem
 }
 
-type OpLogList struct {
-	*list.List[*models.OperationLogItem]
-	renderer      *list.ListRenderer[*models.OperationLogItem]
-	selectedStyle lipgloss.Style
-	textStyle     lipgloss.Style
-}
-
-func (o *OpLogList) RenderItem(w io.Writer, index int) {
-	row := o.Items[index]
-	isHighlighted := index == o.Cursor
-
-	for _, rowLine := range row.Lines {
-		lw := strings.Builder{}
-		for _, segment := range rowLine.Segments {
-			if isHighlighted {
-				fmt.Fprint(&lw, segment.Style.Inherit(o.selectedStyle).Render(segment.Text))
-			} else {
-				fmt.Fprint(&lw, segment.Style.Inherit(o.textStyle).Render(segment.Text))
-			}
-		}
-		line := lw.String()
-		if isHighlighted {
-			fmt.Fprint(w, lipgloss.PlaceHorizontal(o.renderer.Width, 0, line, lipgloss.WithWhitespaceBackground(o.selectedStyle.GetBackground())))
-		} else {
-			fmt.Fprint(w, lipgloss.PlaceHorizontal(o.renderer.Width, 0, line, lipgloss.WithWhitespaceBackground(o.textStyle.GetBackground())))
-		}
-		fmt.Fprint(w, "\n")
-	}
-}
-
-func (o *OpLogList) GetItemHeight(index int) int {
-	return len(o.Items[index].Lines)
-}
+var _ view.IViewModel = (*Model)(nil)
+var _ list.IListProvider = (*Model)(nil)
 
 type Model struct {
-	*common.Sizeable
 	*OpLogList
+	*view.ViewNode
 	context *context.MainContext
 	keymap  config.KeyMappings[key.Binding]
+}
+
+func (m *Model) CurrentItem() models.IItem {
+	return m.OpLogList.Current()
+}
+
+func (m *Model) CheckedItems() []models.IItem {
+	return nil
+}
+
+func (m *Model) GetId() view.ViewId {
+	return "oplog"
+}
+
+func (m *Model) Mount(v *view.ViewNode) {
+	m.ViewNode = v
+	v.Height = v.ViewManager.Height
+	v.Width = v.ViewManager.Width
+	m.renderer.Sizeable = v.Sizeable
+	v.Id = m.GetId()
 }
 
 func (m *Model) ShortHelp() []key.Binding {
@@ -74,7 +61,7 @@ func (m *Model) Init() tea.Cmd {
 	return m.load()
 }
 
-func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case updateOpLogMsg:
 		m.Items = msg.Rows
@@ -84,6 +71,16 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keymap.Cancel):
 			return m, common.Close
+		case key.Matches(msg, m.keymap.Preview.Mode):
+			var cmds []tea.Cmd
+			if previewView := m.ViewManager.GetView("preview"); previewView != nil {
+				previewView.Visible = !previewView.Visible
+				if previewView.Visible {
+					cmds = append(cmds, previewView.Model.Init())
+				}
+			}
+			m.ViewManager.Layout()
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.keymap.Up):
 			if m.Cursor > 0 {
 				m.Cursor--
@@ -94,11 +91,11 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 		case key.Matches(msg, m.keymap.Diff):
 			return m, func() tea.Msg {
-				output, _ := m.context.RunCommandImmediate(jj.OpShow(m.Current().OperationId))
+				output, _ := m.context.RunCommandImmediate(jj.OpShowArgs{Operation: *m.Current()}.GetArgs())
 				return common.ShowDiffMsg(output)
 			}
 		case key.Matches(msg, m.keymap.OpLog.Restore):
-			return m, tea.Batch(common.Close, m.context.RunCommand(jj.OpRestore(m.Current().OperationId), common.Refresh))
+			return m, tea.Batch(common.Close, m.context.RunCommand(jj.Args(jj.OpRestoreArgs{Operation: *m.Current()}), common.Refresh))
 		}
 	}
 	return m, nil
@@ -116,7 +113,12 @@ func (m *Model) View() string {
 
 func (m *Model) load() tea.Cmd {
 	return func() tea.Msg {
-		output, err := m.context.RunCommandImmediate(jj.OpLog(config.Current.OpLog.Limit))
+		output, err := m.context.RunCommandImmediate(jj.Args(jj.OpLogArgs{
+			NoGraph:         false,
+			Limit:           config.Current.OpLog.Limit,
+			GlobalArguments: jj.GlobalArguments{IgnoreWorkingCopy: true, Color: "always"},
+		}))
+
 		if err != nil {
 			panic(err)
 		}
@@ -126,9 +128,8 @@ func (m *Model) load() tea.Cmd {
 	}
 }
 
-func New(ctx *context.MainContext, width int, height int) *Model {
-	ctx.ActiveList = context.ListOplog
-	size := common.NewSizeable(width, height)
+func New(ctx *context.MainContext) view.IViewModel {
+	size := view.NewSizeable(80, 20)
 
 	keyMap := config.Current.GetKeyMap()
 	l := ctx.OpLog
@@ -137,11 +138,11 @@ func New(ctx *context.MainContext, width int, height int) *Model {
 		selectedStyle: common.DefaultPalette.Get("oplog selected"),
 		textStyle:     common.DefaultPalette.Get("oplog text"),
 	}
-	ol.renderer = list.NewRenderer[*models.OperationLogItem](l, ol.RenderItem, ol.GetItemHeight, size)
-	return &Model{
+	ol.renderer = list.NewRenderer[*models.OperationLogItem](l, ol, size)
+	m := &Model{
 		OpLogList: ol,
-		Sizeable:  size,
 		context:   ctx,
 		keymap:    keyMap,
 	}
+	return m
 }

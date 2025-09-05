@@ -9,8 +9,8 @@ import (
 
 	"github.com/idursun/jjui/internal/config"
 	"github.com/idursun/jjui/internal/jj"
+	"github.com/idursun/jjui/internal/models"
 	"github.com/idursun/jjui/internal/parser"
-	"github.com/idursun/jjui/internal/ui/common/models"
 )
 
 const DefaultBatchSize = 50
@@ -27,7 +27,12 @@ func NewGraphStreamer(ctx CommandRunner, revset string) (*GraphStreamer, error) 
 	streamerCtx, cancel := context.WithCancel(context.Background())
 	var commandError error
 
-	command, err := ctx.RunCommandStreaming(streamerCtx, jj.Log(revset, config.Current.Limit))
+	command, err := ctx.RunCommandStreaming(streamerCtx, jj.Args(jj.LogArgs{
+		Revset:          revset,
+		Limit:           config.Current.Limit,
+		Template:        config.Current.Revisions.Template,
+		GlobalArguments: jj.GlobalArguments{Color: "always"},
+	}))
 	if err != nil {
 		cancel()
 		return nil, err

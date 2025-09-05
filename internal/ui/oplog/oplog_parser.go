@@ -3,8 +3,8 @@ package oplog
 import (
 	"io"
 
+	"github.com/idursun/jjui/internal/models"
 	"github.com/idursun/jjui/internal/screen"
-	"github.com/idursun/jjui/internal/ui/common/models"
 )
 
 func newRowLine(segments []*screen.Segment) models.OperationLogRowLine {

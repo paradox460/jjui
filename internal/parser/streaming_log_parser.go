@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/idursun/jjui/internal/models"
 	"github.com/idursun/jjui/internal/screen"
-	"github.com/idursun/jjui/internal/ui/common/models"
 )
 
 type ControlMsg int

@@ -5,13 +5,18 @@ import (
 	"io"
 	"strings"
 
-	"github.com/idursun/jjui/internal/ui/common"
+	"github.com/idursun/jjui/internal/ui/view"
 )
 
 type ItemRenderFunc func(w io.Writer, index int)
 
+type IItemRenderer interface {
+	RenderItem(w io.Writer, index int)
+	GetItemHeight(index int) int
+}
+
 type ListRenderer[T any] struct {
-	*common.ViewRange
+	*view.ViewRange
 	list             *List[T]
 	renderItemFn     ItemRenderFunc
 	getItemHeight    func(index int) int
@@ -20,12 +25,12 @@ type ListRenderer[T any] struct {
 	lineCount        int
 }
 
-func NewRenderer[T any](list *List[T], renderFn ItemRenderFunc, getItemHeight func(index int) int, size *common.Sizeable) *ListRenderer[T] {
+func NewRenderer[T any](list *List[T], itemRenderer IItemRenderer, size *view.Sizeable) *ListRenderer[T] {
 	return &ListRenderer[T]{
-		ViewRange:     &common.ViewRange{Sizeable: size, Start: 0, End: size.Height, FirstRowIndex: -1, LastRowIndex: -1},
+		ViewRange:     &view.ViewRange{Sizeable: size, Start: 0, End: size.Height, FirstRowIndex: -1, LastRowIndex: -1},
 		list:          list,
-		renderItemFn:  renderFn,
-		getItemHeight: getItemHeight,
+		renderItemFn:  itemRenderer.RenderItem,
+		getItemHeight: itemRenderer.GetItemHeight,
 		buffer:        bytes.Buffer{},
 	}
 }
@@ -58,6 +63,12 @@ func (r *ListRenderer[T]) String(start, end int) string {
 }
 
 func (r *ListRenderer[T]) Reset() {
+	//if r.list.Cursor < r.ViewRange.FirstRowIndex || r.list.Cursor > r.ViewRange.LastRowIndex {
+	//	r.ViewRange.FirstRowIndex = -1
+	//	r.ViewRange.LastRowIndex = -1
+	//	r.Start = 0
+	//	r.End = r.Height
+	//}
 	r.buffer.Reset()
 	r.lineCount = 0
 	r.skippedLineCount = 0
@@ -78,6 +89,9 @@ func (r *ListRenderer[T]) Render() string {
 		isHighlighted := i == r.list.Cursor
 		if isHighlighted {
 			selectedLineStart = r.totalLineCount()
+			if selectedLineStart < r.Start {
+				r.Start = selectedLineStart
+			}
 		} else {
 			rowLineCount := r.getItemHeight(i)
 			if rowLineCount+r.totalLineCount() < r.Start {
