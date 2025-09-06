@@ -1,4 +1,4 @@
-package megamerge
+package set_parents
 
 import (
 	"log"
@@ -86,7 +86,7 @@ func (m *Model) HandleKey(msg tea.KeyMsg) tea.Cmd {
 			parentsToRemove = append(parentsToRemove, changeId)
 		}
 
-		return m.context.RunCommand(jj.ModifyParents(m.target.GetChangeId(), parentsToAdd, parentsToRemove), common.RefreshAndSelect(m.target.GetChangeId()), common.Close)
+		return m.context.RunCommand(jj.SetParents(m.target.GetChangeId(), parentsToAdd, parentsToRemove), common.RefreshAndSelect(m.target.GetChangeId()), common.Close)
 	case key.Matches(msg, m.keyMap.Cancel):
 		return common.Close
 	}
@@ -114,14 +114,14 @@ func (m *Model) Render(commit *jj.Commit, renderPosition operations.RenderPositi
 }
 
 func (m *Model) Name() string {
-	return "megamerge"
+	return "set parents"
 }
 
 func NewModel(ctx *context.MainContext, to *jj.Commit) *Model {
 	styles := styles{
-		sourceMarker: common.DefaultPalette.Get("megamerge source_marker"),
-		targetMarker: common.DefaultPalette.Get("megamerge target_marker"),
-		dimmed:       common.DefaultPalette.Get("megamerge dimmed"),
+		sourceMarker: common.DefaultPalette.Get("set_parents source_marker"),
+		targetMarker: common.DefaultPalette.Get("set_parents target_marker"),
+		dimmed:       common.DefaultPalette.Get("set_parents dimmed"),
 	}
 	output, err := ctx.RunCommandImmediate(jj.GetParents(to.GetChangeId()))
 	if err != nil {

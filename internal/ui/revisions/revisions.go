@@ -10,8 +10,8 @@ import (
 
 	"github.com/idursun/jjui/internal/ui/ace_jump"
 	"github.com/idursun/jjui/internal/ui/operations/duplicate"
-	"github.com/idursun/jjui/internal/ui/operations/megamerge"
 	"github.com/idursun/jjui/internal/ui/operations/revert"
+	"github.com/idursun/jjui/internal/ui/operations/set_parents"
 
 	"github.com/idursun/jjui/internal/parser"
 	"github.com/idursun/jjui/internal/ui/operations/describe"
@@ -371,8 +371,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.op = rebase.NewOperation(m.context, m.SelectedRevisions(), rebase.SourceRevision, rebase.TargetDestination)
 			case key.Matches(msg, m.keymap.Duplicate.Mode):
 				m.op = duplicate.NewOperation(m.context, m.SelectedRevisions(), duplicate.TargetDestination)
-			case key.Matches(msg, m.keymap.Megamerge):
-				m.op = megamerge.NewModel(m.context, m.SelectedRevision())
+			case key.Matches(msg, m.keymap.SetParents):
+				m.op = set_parents.NewModel(m.context, m.SelectedRevision())
 			}
 		}
 	}

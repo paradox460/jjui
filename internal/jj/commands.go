@@ -254,7 +254,7 @@ func RebaseInsert(from SelectedRevisions, insertAfter string, insertBefore strin
 	return args
 }
 
-func ModifyParents(to string, parentsToAdd []string, parentsToRemove []string) CommandArgs {
+func SetParents(to string, parentsToAdd []string, parentsToRemove []string) CommandArgs {
 	var b strings.Builder
 	b.WriteString("parents(")
 	b.WriteString(to)
