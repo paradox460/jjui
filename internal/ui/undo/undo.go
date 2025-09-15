@@ -56,7 +56,7 @@ func (m *Model) close() tea.Msg {
 	return nil
 }
 
-func NewModel(context *context.MainContext) view.IViewModel {
+func NewModel(context *context.RevisionsContext) view.IViewModel {
 	output, _ := context.RunCommandImmediate(jj.Args(jj.OpLogArgs{
 		NoGraph:         false,
 		Limit:           1,

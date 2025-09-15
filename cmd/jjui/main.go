@@ -123,7 +123,7 @@ func main() {
 		Location: rootLocation,
 	}
 	appContext := context.NewAppContext(commandRunner, rootLocation)
-	defer appContext.Histories.Flush()
+	defer appContext.History.Histories.Flush()
 	if output, err := config.LoadConfigFile(); err == nil {
 		if err := config.Current.Load(string(output)); err != nil {
 			fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)

@@ -50,7 +50,7 @@ var _ view.IViewModel = (*Model)(nil)
 
 type Model struct {
 	*view.ViewNode
-	context *context.MainContext
+	context *context.RevisionsContext
 	keymap  config.KeyMappings[key.Binding]
 	menu    menu.Menu
 }
@@ -138,7 +138,8 @@ func loadBookmarks(c context.CommandRunner, revision *models.RevisionItem) []jj.
 	return bookmarks
 }
 
-func NewModel(c *context.MainContext, revision *models.RevisionItem) view.IViewModel {
+func NewModel(c *context.RevisionsContext) view.IViewModel {
+	revision := c.Current()
 	var items []list.Item
 	if revision != nil {
 		bookmarks := loadBookmarks(c, revision)

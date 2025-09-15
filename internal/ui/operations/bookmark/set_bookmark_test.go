@@ -29,8 +29,11 @@ func TestSetBookmarkModel_Update(t *testing.T) {
 	commandRunner.Expect(bookmarkSetArgs.GetArgs())
 	defer commandRunner.Verify()
 
-	appContext := context.NewAppContext(commandRunner, "")
-	model := NewSetBookmarkOperation(appContext, &revision)
+	revisionsContext := context.NewRevisionsContext(commandRunner)
+	revisionsContext.SetItems([]*models.RevisionItem{&revision})
+	revisionsContext.SetCursor(0)
+
+	model := NewSetBookmarkOperation(revisionsContext)
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.GetId())

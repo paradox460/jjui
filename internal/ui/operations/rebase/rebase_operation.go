@@ -24,7 +24,6 @@ var _ operations.Operation = (*Operation)(nil)
 
 type Operation struct {
 	*view.ViewNode
-	context        *context.MainContext
 	From           jj.SelectedRevisions
 	InsertStart    *models.RevisionItem
 	To             *models.RevisionItem
@@ -33,6 +32,7 @@ type Operation struct {
 	keyMap         config.KeyMappings[key.Binding]
 	highlightedIds []string
 	styles         styles
+	context        *context.RevisionsContext
 }
 
 func (r *Operation) Mount(v *view.ViewNode) {
@@ -110,7 +110,7 @@ func (r *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (r *Operation) setSelectedRevision() {
-	current := r.context.Revisions.Current()
+	current := r.context.Current()
 	if current == nil {
 		return
 	}
@@ -233,7 +233,7 @@ func (r *Operation) Render(commit *models.Commit, pos operations.RenderPosition)
 	)
 }
 
-func NewOperation(context *context.MainContext, from jj.SelectedRevisions) view.IViewModel {
+func NewOperation(revisionsContext *context.RevisionsContext, from jj.SelectedRevisions) view.IViewModel {
 	styles := styles{
 		changeId:     common.DefaultPalette.Get("rebase change_id"),
 		shortcut:     common.DefaultPalette.Get("rebase shortcut"),
@@ -242,7 +242,7 @@ func NewOperation(context *context.MainContext, from jj.SelectedRevisions) view.
 		targetMarker: common.DefaultPalette.Get("rebase target_marker"),
 	}
 	return &Operation{
-		context: context,
+		context: revisionsContext,
 		keyMap:  config.Current.GetKeyMap(),
 		From:    from,
 		Source:  jj.SourceRevision,

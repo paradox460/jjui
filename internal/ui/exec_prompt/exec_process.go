@@ -14,7 +14,7 @@ import (
 	"github.com/idursun/jjui/internal/ui/context"
 )
 
-func ExecLine(ctx *context.MainContext, mode common.ExecMode, line string) tea.Cmd {
+func ExecLine(ctx *context.RevisionsContext, mode common.ExecMode, line string) tea.Cmd {
 	replacements := ctx.CreateReplacements()
 	switch mode {
 	case common.ExecJJ:

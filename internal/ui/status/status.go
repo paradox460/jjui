@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/idursun/jjui/internal/config"
 	"github.com/idursun/jjui/internal/ui/view"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -13,7 +12,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/idursun/jjui/internal/ui/common"
-	"github.com/idursun/jjui/internal/ui/context"
 )
 
 type commandStatus int
@@ -29,7 +27,6 @@ var _ view.IViewModel = (*Model)(nil)
 
 type Model struct {
 	*view.ViewNode
-	context *context.MainContext
 	spinner spinner.Model
 	input   textinput.Model
 	command string
@@ -163,22 +160,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m *Model) saveEditingSuggestions() {
-	input := m.input.Value()
-	if len(strings.TrimSpace(input)) == 0 {
-		return
-	}
-	h := m.context.Histories.GetHistory(config.HistoryKey(m.mode), true)
-	h.Append(input)
-}
-
-func (m *Model) loadEditingSuggestions() {
-	h := m.context.Histories.GetHistory(config.HistoryKey(m.mode), true)
-	history := h.Entries()
-	m.input.ShowSuggestions = true
-	m.input.SetSuggestions(history)
-}
-
 func (m *Model) View() string {
 	commandStatusMark := m.styles.text.Render(" ")
 	if m.status == commandRunning {
@@ -239,7 +220,7 @@ func (m *Model) helpView(keyMap help.KeyMap) string {
 	return help
 }
 
-func New(ctx *context.MainContext) view.IViewModel {
+func New() view.IViewModel {
 	styles := styles{
 		shortcut: common.DefaultPalette.Get("status shortcut"),
 		dimmed:   common.DefaultPalette.Get("status dimmed"),
@@ -258,7 +239,6 @@ func New(ctx *context.MainContext) view.IViewModel {
 	t.PlaceholderStyle = styles.dimmed
 
 	m := Model{
-		context: ctx,
 		spinner: s,
 		command: "",
 		status:  none,

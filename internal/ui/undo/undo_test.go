@@ -22,7 +22,7 @@ func TestConfirm(t *testing.T) {
 	commandRunner.Expect(jj.UndoArgs{}.GetArgs())
 	defer commandRunner.Verify()
 
-	model := NewModel(context.NewAppContext(commandRunner, ""))
+	model := NewModel(context.NewRevisionsContext(commandRunner))
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.GetId())
@@ -47,7 +47,7 @@ func TestCancel(t *testing.T) {
 	}.GetArgs())
 	defer commandRunner.Verify()
 
-	model := NewModel(context.NewAppContext(commandRunner, ""))
+	model := NewModel(context.NewRevisionsContext(commandRunner))
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.GetId())

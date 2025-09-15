@@ -27,7 +27,7 @@ var _ view.IViewModel = (*Model)(nil)
 
 type Model struct {
 	*view.ViewNode
-	context     *context.MainContext
+	context     *context.RevisionsContext
 	current     *models.RevisionItem
 	menu        menu.Menu
 	keymap      config.KeyMappings[key.Binding]
@@ -267,7 +267,7 @@ func (m *Model) distance(commitId string) int {
 	return math.MinInt32
 }
 
-func NewModel(c *context.MainContext, current *models.RevisionItem, commitIds []string) view.IViewModel {
+func NewModel(c *context.RevisionsContext, current *models.RevisionItem, commitIds []string) view.IViewModel {
 	var items []list.Item
 	keymap := config.Current.GetKeyMap()
 	size := view.NewSizeable(80, 25)

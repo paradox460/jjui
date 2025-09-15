@@ -20,7 +20,7 @@ var _ view.IViewModel = (*Operation)(nil)
 
 type Operation struct {
 	*view.ViewNode
-	context        *context.MainContext
+	context        *context.RevisionsContext
 	From           jj.SelectedRevisions
 	InsertStart    *models.RevisionItem
 	To             *models.RevisionItem
@@ -86,7 +86,7 @@ func (o *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, o.keyMap.Apply):
 		o.ViewManager.UnregisterView(o.GetId())
 		if o.Target == jj.TargetInsert {
-			//return o.context.RunCommand(jj.RevertInsert(o.From, o.InsertStart.GetChangeId(), o.To.GetChangeId()), common.RefreshAndSelect(o.From.Last()))
+			//return o.revisionsContext.RunCommand(jj.RevertInsert(o.From, o.InsertStart.GetChangeId(), o.To.GetChangeId()), common.RefreshAndSelect(o.From.Last()))
 			return o.context.RunCommand(jj.Args(jj.RevertInsertArgs{From: o.From, InsertAfter: *o.InsertStart, InsertBefore: *o.To}), common.RefreshAndSelect(o.From.Last()))
 		} else {
 			return o.context.RunCommand(jj.Args(jj.RevertArgs{
@@ -104,7 +104,7 @@ func (o *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (o *Operation) setSelectedRevision() {
-	current := o.context.Revisions.Current()
+	current := o.context.Current()
 	if current == nil {
 		return
 	}
@@ -203,7 +203,7 @@ func (o *Operation) Render(commit *models.Commit, pos operations.RenderPosition)
 	)
 }
 
-func NewOperation(context *context.MainContext, from jj.SelectedRevisions) view.IViewModel {
+func NewOperation(revisionsContext *context.RevisionsContext, from jj.SelectedRevisions) view.IViewModel {
 	styles := styles{
 		changeId:     common.DefaultPalette.Get("revert change_id"),
 		shortcut:     common.DefaultPalette.Get("revert shortcut"),
@@ -212,7 +212,7 @@ func NewOperation(context *context.MainContext, from jj.SelectedRevisions) view.
 		targetMarker: common.DefaultPalette.Get("revert target_marker"),
 	}
 	return &Operation{
-		context: context,
+		context: revisionsContext,
 		keyMap:  config.Current.GetKeyMap(),
 		From:    from,
 		Target:  jj.TargetDestination,

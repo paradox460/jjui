@@ -29,12 +29,12 @@ var _ list.IListProvider = (*Operation)(nil)
 type Operation struct {
 	*DetailsList
 	*view.ViewNode
-	context           *context.MainContext
 	revision          *models.RevisionItem
 	confirmation      *confirmation.Model
 	keyMap            config.KeyMappings[key.Binding]
 	targetMarkerStyle lipgloss.Style
-	selected          *models.RevisionItem
+	revisionsContext  *context.RevisionsContext
+	detailsContext    *context.DetailsContext
 }
 
 func (o *Operation) CurrentItem() models.IItem {
@@ -62,7 +62,7 @@ func (o *Operation) GetId() view.ViewId {
 }
 
 func (o *Operation) Init() tea.Cmd {
-	return o.context.Files.Load()
+	return o.detailsContext.Load()
 }
 
 type styles struct {
@@ -117,7 +117,7 @@ func (o *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	log.Printf("Describe operation update %T", msg)
 	switch msg := msg.(type) {
 	case common.RefreshMsg:
-		return o, o.context.Files.Load()
+		return o, o.detailsContext.Load()
 	case tea.KeyMsg:
 		if o.confirmation != nil {
 			var cmd tea.Cmd
@@ -165,10 +165,10 @@ func (o *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			o.confirmation = model
 			return o, o.confirmation.Init()
 		case key.Matches(msg, o.keyMap.Details.Squash):
-			o.context.Revisions.JumpToParent(jj.NewSelectedRevisions(o.revision))
+			o.revisionsContext.JumpToParent(jj.NewSelectedRevisions(o.revision))
 			selectedItems, _ := o.getSelectedFiles()
 			o.close()
-			op := squash.NewOperation(o.context, squash.NewSquashFilesOpts(jj.NewSelectedRevisions(o.revision), selectedItems))
+			op := squash.NewOperation(o.revisionsContext, squash.NewSquashFilesOpts(jj.NewSelectedRevisions(o.revision), selectedItems))
 			v := o.ViewManager.CreateChildView(view.RevisionsViewId, op)
 			o.ViewManager.FocusView(v.GetId())
 			return o, op.Init()
@@ -234,7 +234,7 @@ func (o *Operation) close() tea.Msg {
 }
 
 func (o *Operation) Render(commit *models.Commit, pos operations.RenderPosition) string {
-	isSelected := o.selected.Commit.GetChangeId() == commit.GetChangeId()
+	isSelected := o.revision.Commit.GetChangeId() == commit.GetChangeId()
 	if !isSelected || pos != operations.RenderPositionAfter {
 		return ""
 	}
@@ -269,7 +269,7 @@ func (o *Operation) View() string {
 	return lipgloss.Place(w, h, 0, 0, rendered, lipgloss.WithWhitespaceBackground(o.styles.Text.GetBackground()))
 }
 
-func NewOperation(ctx *context.MainContext, selected *models.RevisionItem) *Operation {
+func NewOperation(revisionsContext *context.RevisionsContext, detailsContext *context.DetailsContext) *Operation {
 	s := styles{
 		Added:    common.DefaultPalette.Get("revisions details added"),
 		Deleted:  common.DefaultPalette.Get("revisions details deleted"),
@@ -280,18 +280,18 @@ func NewOperation(ctx *context.MainContext, selected *models.RevisionItem) *Oper
 		Text:     common.DefaultPalette.Get("revisions details text"),
 		Conflict: common.DefaultPalette.Get("revisions details conflict"),
 	}
-	ctx.Files.CheckableList.SetItems(nil)
+	detailsContext.CheckableList.SetItems(nil)
 
 	dl := &DetailsList{
-		CheckableList: ctx.Files.CheckableList,
+		CheckableList: detailsContext.CheckableList,
 		styles:        s,
 	}
 	dl.renderer = list.NewRenderer[*models.RevisionFileItem](dl.List, dl, view.NewSizeable(30, 20))
 	m := &Operation{
-		revision:          ctx.Revisions.Current(),
+		revision:          revisionsContext.Current(),
+		revisionsContext:  revisionsContext,
+		detailsContext:    detailsContext,
 		DetailsList:       dl,
-		context:           ctx,
-		selected:          selected,
 		keyMap:            config.Current.GetKeyMap(),
 		targetMarkerStyle: common.DefaultPalette.Get("details target_marker"),
 	}

@@ -24,13 +24,24 @@ type RevisionsContext struct {
 	offScreenRows    []*models.RevisionItem
 	streamer         *GraphStreamer
 	hasMore          bool
+	CurrentRevset    string
+	Location         string
 }
 
-func NewRevisionsContext(ctx *MainContext) *RevisionsContext {
+func (m *RevisionsContext) CreateReplacements() map[string]string {
+	replacements := make(map[string]string)
+	return replacements
+}
+
+func NewRevisionsContext(runner CommandRunner) *RevisionsContext {
 	return &RevisionsContext{
-		CommandRunner: ctx.CommandRunner,
+		CommandRunner: runner,
 		CheckableList: list.NewCheckableList[*models.RevisionItem](),
 	}
+}
+
+func (m *RevisionsContext) CreateDetailsContext() *DetailsContext {
+	return NewDetailsContext(m.CommandRunner, m)
 }
 
 func (m *RevisionsContext) LoadStreaming(revset string, selectedRevision string) tea.Cmd {

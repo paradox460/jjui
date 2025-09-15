@@ -28,8 +28,7 @@ func Test_Accept(t *testing.T) {
 	commandRunner.Expect(jj.AbandonArgs{Revisions: revisions, RetainBookmarks: true}.GetArgs())
 	defer commandRunner.Verify()
 
-	appContext := context.NewAppContext(commandRunner, "")
-	model := NewOperation(appContext, revisions)
+	model := NewOperation(context.NewRevisionsContext(commandRunner), revisions)
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.Id)
@@ -49,8 +48,7 @@ func Test_Cancel(t *testing.T) {
 	commandRunner := test.NewTestCommandRunner(t)
 	defer commandRunner.Verify()
 
-	appContext := context.NewAppContext(commandRunner, "")
-	model := NewOperation(appContext, revisions)
+	model := NewOperation(context.NewRevisionsContext(commandRunner), revisions)
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.Id)

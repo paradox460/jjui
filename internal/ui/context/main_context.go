@@ -11,10 +11,6 @@ import (
 
 type MainContext struct {
 	CommandRunner
-	OpLog          *OplogContext
-	Revisions      *RevisionsContext
-	Evolog         *list.List[*models.RevisionItem]
-	Files          *DetailsContext
 	Preview        *PreviewContext
 	Location       string
 	CustomCommands map[string]CustomCommand
@@ -22,20 +18,20 @@ type MainContext struct {
 	JJConfig       *config.JJConfig
 	DefaultRevset  string
 	CurrentRevset  string
-	Histories      *config.Histories
+	History        HistoryContext
+}
+
+type HistoryContext struct {
+	*config.Histories
 }
 
 func NewAppContext(commandRunner CommandRunner, location string) *MainContext {
 	m := &MainContext{
 		CommandRunner: commandRunner,
 		Location:      location,
-		Histories:     config.NewHistories(),
+		History:       HistoryContext{Histories: config.NewHistories()},
 	}
-	m.Revisions = NewRevisionsContext(m)
-	m.Files = NewDetailsContext(m)
-	m.Evolog = list.NewList[*models.RevisionItem]()
 	m.Preview = NewPreviewContext(commandRunner)
-	m.OpLog = NewOplogContext(m)
 
 	m.JJConfig = &config.JJConfig{}
 	if output, err := m.RunCommandImmediate(jj.Args(jj.ConfigListAllArgs{})); err == nil {
@@ -44,29 +40,44 @@ func NewAppContext(commandRunner CommandRunner, location string) *MainContext {
 	return m
 }
 
+func (ctx *MainContext) CreateRevisionsContext() *RevisionsContext {
+	revisionContext := NewRevisionsContext(ctx)
+	revisionContext.Location = ctx.Location
+	revisionContext.CurrentRevset = ctx.CurrentRevset
+	return revisionContext
+}
+
+func (ctx *MainContext) CreateEvologContext() *list.List[*models.RevisionItem] {
+	return list.NewList[*models.RevisionItem]()
+}
+
+func (ctx *MainContext) CreateOplogContext() *OplogContext {
+	return NewOplogContext(ctx)
+}
+
 // CreateReplacements context aware replacements for custom commands and exec input.
 func (ctx *MainContext) CreateReplacements() map[string]string {
 	replacements := make(map[string]string)
 	replacements[jj.RevsetPlaceholder] = ctx.CurrentRevset
 
-	if current := ctx.Revisions.Current(); current != nil {
-		replacements[jj.ChangeIdPlaceholder] = current.Commit.ChangeId
-		replacements[jj.CommitIdPlaceholder] = current.Commit.CommitId
-	}
-	if current := ctx.Files.Current(); current != nil {
-		replacements[jj.FilePlaceholder] = current.FileName
-	}
-	if current := ctx.OpLog.Current(); current != nil {
-		replacements[jj.OperationIdPlaceholder] = current.OperationId
-	}
-	if current := ctx.Evolog.Current(); current != nil {
-		replacements[jj.CommitIdPlaceholder] = current.Commit.CommitId
-	}
+	//if current := ctx.revisions.Current(); current != nil {
+	//	replacements[jj.ChangeIdPlaceholder] = current.Commit.ChangeId
+	//	replacements[jj.CommitIdPlaceholder] = current.Commit.CommitId
+	//}
+	//if current := ctx.files.Current(); current != nil {
+	//	replacements[jj.FilePlaceholder] = current.FileName
+	//}
+	//if current := ctx.OpLog.Current(); current != nil {
+	//	replacements[jj.OperationIdPlaceholder] = current.OperationId
+	//}
+	//if current := ctx.Evolog.Current(); current != nil {
+	//	replacements[jj.CommitIdPlaceholder] = current.Commit.CommitId
+	//}
 
 	var checkedRevisions []string
-	for _, item := range ctx.Revisions.GetCheckedItems() {
-		checkedRevisions = append(checkedRevisions, item.Commit.CommitId)
-	}
+	//for _, item := range ctx.revisions.GetCheckedItems() {
+	//	checkedRevisions = append(checkedRevisions, item.Commit.CommitId)
+	//}
 
 	if len(checkedRevisions) == 0 {
 		replacements[jj.CheckedCommitIdsPlaceholder] = "none()"
@@ -75,9 +86,9 @@ func (ctx *MainContext) CreateReplacements() map[string]string {
 	}
 
 	var checkedFiles []string
-	for _, item := range ctx.Files.GetCheckedItems() {
-		checkedFiles = append(checkedFiles, item.FileName)
-	}
+	//for _, item := range ctx.files.GetCheckedItems() {
+	//	checkedFiles = append(checkedFiles, item.FileName)
+	//}
 
 	if len(checkedFiles) > 0 {
 		replacements[jj.CheckedFilesPlaceholder] = strings.Join(checkedFiles, "\t")

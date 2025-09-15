@@ -26,8 +26,8 @@ func Test_Push(t *testing.T) {
 	commandRunner.Expect(jj.GitPushCommandArgs{}.GetArgs())
 	defer commandRunner.Verify()
 
-	ctx := context.NewAppContext(commandRunner, "")
-	model := NewModel(ctx, nil)
+	ctx := context.NewRevisionsContext(commandRunner)
+	model := NewModel(ctx)
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.GetId())
@@ -45,8 +45,8 @@ func Test_Fetch(t *testing.T) {
 	commandRunner.Expect(jj.GitFetchArgs{}.GetArgs())
 	defer commandRunner.Verify()
 
-	ctx := context.NewAppContext(commandRunner, "")
-	model := NewModel(ctx, nil)
+	ctx := context.NewRevisionsContext(commandRunner)
+	model := NewModel(ctx)
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.GetId())
@@ -81,12 +81,14 @@ func Test_PushChange(t *testing.T) {
 	commandRunner := test.NewTestCommandRunner(t)
 	// Expect bookmark list to be loaded since we have a changeId
 	commandRunner.Expect(jj.BookmarkListArgs{Revision: revision}.GetArgs()).SetOutput([]byte(""))
-	gitPushArgs := jj.GitPushCommandArgs{Change: revision}
+	gitPushArgs := jj.GitPushCommandArgs{Change: &revision}
 	commandRunner.Expect(gitPushArgs.GetArgs())
 	defer commandRunner.Verify()
 
-	ctx := context.NewAppContext(commandRunner, "")
-	model := NewModel(ctx, &revision)
+	ctx := context.NewRevisionsContext(commandRunner)
+	ctx.SetItems([]*models.RevisionItem{&revision})
+	ctx.SetCursor(0)
+	model := NewModel(ctx)
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.GetId())

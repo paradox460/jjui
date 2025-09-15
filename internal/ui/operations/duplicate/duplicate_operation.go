@@ -19,13 +19,13 @@ var _ view.IViewModel = (*Operation)(nil)
 
 type Operation struct {
 	*view.ViewNode
-	context        *appContext.MainContext
-	From           jj.SelectedRevisions
-	InsertStart    *models.RevisionItem
-	To             *models.RevisionItem
-	Target         jj.Target
-	keyMap         config.KeyMappings[key.Binding]
-	styles         styles
+	From             jj.SelectedRevisions
+	InsertStart      *models.RevisionItem
+	To               *models.RevisionItem
+	Target           jj.Target
+	keyMap           config.KeyMappings[key.Binding]
+	styles           styles
+	revisionsContext *appContext.RevisionsContext
 }
 
 func (r *Operation) Init() tea.Cmd {
@@ -79,7 +79,7 @@ func (r *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 		r.Target = jj.TargetBefore
 	case key.Matches(msg, r.keyMap.Apply):
 		r.ViewManager.UnregisterView(r.GetId())
-		return r.context.RunCommand(jj.Args(jj.DuplicateArgs{From: r.From, To: *r.To, Target: r.Target}), common.RefreshAndSelect(r.From.Last()))
+		return r.revisionsContext.RunCommand(jj.Args(jj.DuplicateArgs{From: r.From, To: *r.To, Target: r.Target}), common.RefreshAndSelect(r.From.Last()))
 	case key.Matches(msg, r.keyMap.Cancel):
 		r.ViewManager.UnregisterView(r.GetId())
 		return nil
@@ -88,7 +88,7 @@ func (r *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (r *Operation) setSelectedRevision() {
-	current := r.context.Revisions.Current()
+	current := r.revisionsContext.Current()
 	if current == nil {
 		r.To = nil
 		return
@@ -152,7 +152,7 @@ func (r *Operation) Render(commit *models.Commit, pos operations.RenderPosition)
 	)
 }
 
-func NewOperation(context *appContext.MainContext, from jj.SelectedRevisions) view.IViewModel {
+func NewOperation(revisionsContext *appContext.RevisionsContext, from jj.SelectedRevisions) view.IViewModel {
 	styles := styles{
 		changeId:     common.DefaultPalette.Get("duplicate change_id"),
 		dimmed:       common.DefaultPalette.Get("duplicate dimmed"),
@@ -160,10 +160,10 @@ func NewOperation(context *appContext.MainContext, from jj.SelectedRevisions) vi
 		targetMarker: common.DefaultPalette.Get("duplicate target_marker"),
 	}
 	return &Operation{
-		context: context,
-		keyMap:  config.Current.GetKeyMap(),
-		From:    from,
-		Target:  jj.TargetDestination,
-		styles:  styles,
+		revisionsContext: revisionsContext,
+		keyMap:           config.Current.GetKeyMap(),
+		From:             from,
+		Target:           jj.TargetDestination,
+		styles:           styles,
 	}
 }

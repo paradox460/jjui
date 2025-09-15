@@ -20,14 +20,14 @@ var _ view.IViewModel = (*Operation)(nil)
 
 type Operation struct {
 	*view.ViewNode
-	context     *context.MainContext
-	from        jj.SelectedRevisions
-	files       []*models.RevisionFileItem
-	current     *models.RevisionItem
-	keyMap      config.KeyMappings[key.Binding]
-	keepEmptied bool
-	interactive bool
-	styles      styles
+	from             jj.SelectedRevisions
+	files            []*models.RevisionFileItem
+	current          *models.RevisionItem
+	keyMap           config.KeyMappings[key.Binding]
+	keepEmptied      bool
+	interactive      bool
+	styles           styles
+	revisionsContext *context.RevisionsContext
 }
 
 func (s *Operation) Init() tea.Cmd {
@@ -90,7 +90,7 @@ func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 				KeepEmptied: s.keepEmptied,
 			}
 		}
-		return s.context.RunInteractiveCommand(jj.Squash(args), common.RefreshAndSelect(s.current.Commit.GetChangeId()))
+		return s.revisionsContext.RunInteractiveCommand(jj.Squash(args), common.RefreshAndSelect(s.current.Commit.GetChangeId()))
 	case key.Matches(msg, s.keyMap.Cancel):
 		s.ViewManager.UnregisterView(s.GetId())
 		return nil
@@ -103,7 +103,7 @@ func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (s *Operation) setSelectedRevision() {
-	if current := s.context.Revisions.Current(); current != nil {
+	if current := s.revisionsContext.Current(); current != nil {
 		s.current = current
 	}
 }
@@ -164,19 +164,19 @@ func NewSquashFilesOpts(from jj.SelectedRevisions, files []*models.RevisionFileI
 	}
 }
 
-func NewOperation(context *context.MainContext, opts SquashOperationOpts) view.IViewModel {
+func NewOperation(revisionsContext *context.RevisionsContext, opts SquashOperationOpts) view.IViewModel {
 	styles := styles{
 		dimmed:       common.DefaultPalette.Get("squash dimmed"),
 		sourceMarker: common.DefaultPalette.Get("squash source_marker"),
 		targetMarker: common.DefaultPalette.Get("squash target_marker"),
 	}
 	return &Operation{
-		context:     context,
-		keyMap:      config.Current.GetKeyMap(),
-		from:        opts.From,
-		files:       opts.Files,
-		interactive: opts.Interactive,
-		keepEmptied: opts.KeepEmptied,
-		styles:      styles,
+		revisionsContext: revisionsContext,
+		keyMap:           config.Current.GetKeyMap(),
+		from:             opts.From,
+		files:            opts.Files,
+		interactive:      opts.Interactive,
+		keepEmptied:      opts.KeepEmptied,
+		styles:           styles,
 	}
 }

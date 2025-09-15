@@ -45,12 +45,13 @@ var _ list.IListProvider = (*Model)(nil)
 type Model struct {
 	*view.ViewNode
 	*RevisionList
-	context         *appContext.MainContext
-	keymap          config.KeyMappings[key.Binding]
-	output          string
-	err             error
-	previousOpLogId string
-	isLoading       bool
+	keymap           config.KeyMappings[key.Binding]
+	output           string
+	err              error
+	previousOpLogId  string
+	isLoading        bool
+	revisionsContext *appContext.RevisionsContext
+	historyContext   *appContext.HistoryContext
 }
 
 func (m *Model) Mount(v *view.ViewNode) {
@@ -124,13 +125,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case common.RefreshMsg:
 		if !msg.KeepSelections {
-			m.context.Revisions.ClearCheckedItems()
+			m.revisionsContext.ClearCheckedItems()
 		}
 		m.isLoading = true
 		if config.Current.Revisions.LogBatching {
-			return m, m.context.Revisions.LoadStreaming(m.context.CurrentRevset, msg.SelectedRevision)
+			return m, m.revisionsContext.LoadStreaming(m.revisionsContext.CurrentRevset, msg.SelectedRevision)
 		} else {
-			return m, m.context.Revisions.Load(m.context.CurrentRevset, msg.SelectedRevision)
+			return m, m.revisionsContext.Load(m.revisionsContext.CurrentRevset, msg.SelectedRevision)
 		}
 	case appContext.UpdateRevisionsMsg:
 		m.isLoading = false
@@ -146,30 +147,30 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keymap.Up):
-			return m, m.context.Revisions.CursorUp()
+			return m, m.revisionsContext.CursorUp()
 		case key.Matches(msg, m.keymap.Down):
-			return m, m.context.Revisions.CursorDown()
+			return m, m.revisionsContext.CursorDown()
 		case key.Matches(msg, m.keymap.JumpToParent):
-			m.context.Revisions.JumpToParent(m.SelectedRevisions())
+			m.revisionsContext.JumpToParent(m.SelectedRevisions())
 		case key.Matches(msg, m.keymap.JumpToChildren):
-			immediate, _ := m.context.RunCommandImmediate(jj.GetFirstChild(m.SelectedRevision()))
-			index := m.context.Revisions.FindRevision(string(immediate))
+			immediate, _ := m.revisionsContext.RunCommandImmediate(jj.GetFirstChild(m.SelectedRevision()))
+			index := m.revisionsContext.FindRevision(string(immediate))
 			if index != -1 {
 				m.Cursor = index
 			}
 		case key.Matches(msg, m.keymap.JumpToWorkingCopy):
-			workingCopyIndex := m.context.Revisions.FindRevision("@")
+			workingCopyIndex := m.revisionsContext.FindRevision("@")
 			if workingCopyIndex != -1 {
 				m.Cursor = workingCopyIndex
 			}
 		case key.Matches(msg, m.keymap.AceJump):
-			model := ace_jump.NewOperation(m.context.Revisions.List, m.renderer)
+			model := ace_jump.NewOperation(m.revisionsContext.List, m.renderer)
 			v := m.ViewManager.CreateChildView(m.GetId(), model)
 			m.ViewManager.FocusView(v.GetId())
 			m.ViewManager.StartEditing(v.GetId())
 			return m, model.Init()
 		case key.Matches(msg, m.keymap.QuickSearch):
-			model := quick_search.NewOperation(m.context.Revisions.List)
+			model := quick_search.NewOperation(m.revisionsContext.List)
 			v := m.ViewManager.CreateChildView(m.GetId(), model)
 			m.ViewManager.AddModal(v, view.Left(len(model.GetId())+3), view.Bottom())
 			m.ViewManager.StartEditing(v.GetId())
@@ -188,112 +189,111 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keymap.ToggleSelect):
 				current := m.Current()
 				current.Toggle()
-				m.context.Revisions.JumpToParent(jj.NewSelectedRevisions(current))
+				m.revisionsContext.JumpToParent(jj.NewSelectedRevisions(current))
 			case key.Matches(msg, m.keymap.Details.Mode):
-				op := details.NewOperation(m.context, m.context.Revisions.Current())
+				op := details.NewOperation(m.revisionsContext, m.revisionsContext.CreateDetailsContext())
 				v := m.ViewManager.CreateView(op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.InlineDescribe.Mode):
-				op := describe.NewOperation(m.context, m.Current())
+				op := describe.NewOperation(m.revisionsContext)
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				m.ViewManager.StartEditing(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.New):
-				cmd = m.context.RunCommand(jj.Args(jj.NewArgs{Revisions: m.SelectedRevisions()}), common.RefreshAndSelect("@"))
+				cmd = m.revisionsContext.RunCommand(jj.Args(jj.NewArgs{Revisions: m.SelectedRevisions()}), common.RefreshAndSelect("@"))
 			case key.Matches(msg, m.keymap.Commit):
-				cmd = m.context.RunInteractiveCommand(jj.Args(jj.CommitArgs{}), common.Refresh)
+				cmd = m.revisionsContext.RunInteractiveCommand(jj.Args(jj.CommitArgs{}), common.Refresh)
 			case key.Matches(msg, m.keymap.Edit, m.keymap.ForceEdit):
 				ignoreImmutable := key.Matches(msg, m.keymap.ForceEdit)
-				cmd = m.context.RunCommand(jj.Args(jj.EditArgs{
+				cmd = m.revisionsContext.RunCommand(jj.Args(jj.EditArgs{
 					Revision:        *m.Current(),
 					GlobalArguments: jj.GlobalArguments{IgnoreImmutable: ignoreImmutable},
 				}), common.Refresh)
 			case key.Matches(msg, m.keymap.Diffedit):
-				cmd = m.context.RunInteractiveCommand(jj.Args(jj.DiffEditArgs{Revision: *m.Current()}), common.Refresh)
+				cmd = m.revisionsContext.RunInteractiveCommand(jj.Args(jj.DiffEditArgs{Revision: *m.Current()}), common.Refresh)
 			case key.Matches(msg, m.keymap.Absorb):
-				cmd = m.context.RunCommand(jj.Args(jj.AbsorbArgs{From: *m.Current()}), common.Refresh)
+				cmd = m.revisionsContext.RunCommand(jj.Args(jj.AbsorbArgs{From: *m.Current()}), common.Refresh)
 			case key.Matches(msg, m.keymap.Abandon):
 				selections := m.SelectedRevisions()
-				op := abandon.NewOperation(m.context, selections)
+				op := abandon.NewOperation(m.revisionsContext, selections)
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.Bookmark.Set):
-				op := bookmark.NewSetBookmarkOperation(m.context, m.Current())
+				op := bookmark.NewSetBookmarkOperation(m.revisionsContext)
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.StartEditing(v.Id)
 				m.ViewManager.FocusView(v.Id)
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.Split):
-				return m, m.context.RunInteractiveCommand(jj.Args(jj.SplitArgs{Revision: *m.Current()}), common.Refresh)
+				return m, m.revisionsContext.RunInteractiveCommand(jj.Args(jj.SplitArgs{Revision: *m.Current()}), common.Refresh)
 			case key.Matches(msg, m.keymap.Describe):
-				return m, m.context.RunInteractiveCommand(jj.Args(jj.DescribeArgs{Revisions: m.SelectedRevisions()}), common.Refresh)
+				return m, m.revisionsContext.RunInteractiveCommand(jj.Args(jj.DescribeArgs{Revisions: m.SelectedRevisions()}), common.Refresh)
 			case key.Matches(msg, m.keymap.Evolog.Mode):
-				op := evolog.NewOperation(m.context, m.Current())
+				op := evolog.NewOperation(m.revisionsContext)
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.Refresh):
 				cmd = common.Refresh
 			case key.Matches(msg, m.keymap.Diff):
-				current := m.context.Revisions.Current()
+				current := m.revisionsContext.Current()
 				return m, func() tea.Msg {
 					return common.LoadDiffLayoutMsg{
 						Args: jj.DiffCommandArgs{Source: jj.NewDiffRevisionsSource(jj.NewSingleSourceFromRevision(current))},
 					}
 				}
 			case key.Matches(msg, m.keymap.Git.Mode):
-				current := m.context.Revisions.Current()
-				model := git.NewModel(m.context, current)
+				model := git.NewModel(m.revisionsContext)
 				m.createModalView(model)
 				return m, model.Init()
 			case key.Matches(msg, m.keymap.Bookmark.Mode):
-				changeIds := m.context.Revisions.GetCommitIds()
-				current := m.context.Revisions.Current()
-				model := bookmarks.NewModel(m.context, current, changeIds)
+				changeIds := m.revisionsContext.GetCommitIds()
+				current := m.revisionsContext.Current()
+				model := bookmarks.NewModel(m.revisionsContext, current, changeIds)
 				m.createModalView(model)
 				return m, model.Init()
 			case key.Matches(msg, m.keymap.Undo):
-				model := undo.NewModel(m.context)
+				model := undo.NewModel(m.revisionsContext)
 				m.createModalView(model)
 				return m, model.Init()
 			case key.Matches(msg, m.keymap.Squash.Mode):
 				selectedRevisions := m.SelectedRevisions()
-				parent, _ := m.context.RunCommandImmediate(jj.GetParent(selectedRevisions).GetArgs())
-				parentIdx := m.context.Revisions.FindRevision(string(parent))
+				parent, _ := m.revisionsContext.RunCommandImmediate(jj.GetParent(selectedRevisions).GetArgs())
+				parentIdx := m.revisionsContext.FindRevision(string(parent))
 				if parentIdx != -1 {
 					m.Cursor = parentIdx
 				} else if m.Cursor < len(m.Items)-1 {
 					m.Cursor++
 				}
-				op := squash.NewOperation(m.context, squash.NewSquashRevisionsOpts(selectedRevisions))
+				op := squash.NewOperation(m.revisionsContext, squash.NewSquashRevisionsOpts(selectedRevisions))
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.Revert.Mode):
-				op := revert.NewOperation(m.context, m.SelectedRevisions())
+				op := revert.NewOperation(m.revisionsContext, m.SelectedRevisions())
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.Rebase.Mode):
-				op := rebase.NewOperation(m.context, m.SelectedRevisions())
+				op := rebase.NewOperation(m.revisionsContext, m.SelectedRevisions())
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.Duplicate.Mode):
-				op := duplicate.NewOperation(m.context, m.SelectedRevisions())
+				op := duplicate.NewOperation(m.revisionsContext, m.SelectedRevisions())
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.SetParents):
-				op := set_parents.NewOperation(m.context, m.Current())
+				op := set_parents.NewOperation(m.revisionsContext, m.Current())
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()
 			case key.Matches(msg, m.keymap.FileSearch.Toggle):
-				model := file_search.NewModel(m.context)
+				model := file_search.NewModel(m.revisionsContext)
 				v := m.ViewManager.CreateChildView(m.GetId(), model)
 				m.ViewManager.AddModal(v, view.Left(len(model.GetId())+3), view.Bottom())
 				m.ViewManager.StartEditing(v.GetId())
@@ -303,7 +303,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if key.Matches(msg, m.keymap.ExecShell) {
 					mode = common.ExecShell
 				}
-				model := exec_prompt.NewExecPrompt(m.context, mode)
+				model := exec_prompt.NewExecPrompt(m.revisionsContext, m.historyContext, mode)
 				v := m.ViewManager.CreateChildView(m.GetId(), model)
 				m.ViewManager.AddModal(v, view.Left(3), view.Bottom(1))
 				m.ViewManager.StartEditing(v.GetId())
@@ -376,12 +376,11 @@ func (n noop) Render(*models.Commit, operations.RenderPosition) string {
 	return ""
 }
 
-func New(c *appContext.MainContext, viewManager *view.ViewManager) view.IViewModel {
+func New(revisionsContext *appContext.RevisionsContext, historyContext *appContext.HistoryContext, viewManager *view.ViewManager) view.IViewModel {
 	keymap := config.Current.GetKeyMap()
-	l := c.Revisions
 
 	rl := &RevisionList{
-		CheckableList: l.CheckableList,
+		CheckableList: revisionsContext.CheckableList,
 		textStyle:     common.DefaultPalette.Get("revisions text"),
 		selectedStyle: common.DefaultPalette.Get("revisions selected").Inline(true),
 		dimmedStyle:   common.DefaultPalette.Get("revisions dimmed"),
@@ -399,12 +398,13 @@ func New(c *appContext.MainContext, viewManager *view.ViewManager) view.IViewMod
 			return noop{}
 		},
 	}
-	rl.renderer = list.NewRenderer[*models.RevisionItem](l.List, rl, view.NewSizeable(0, 0))
+	rl.renderer = list.NewRenderer[*models.RevisionItem](revisionsContext.List, rl, view.NewSizeable(0, 0))
 
 	m := Model{
-		RevisionList: rl,
-		context:      c,
-		keymap:       keymap,
+		revisionsContext: revisionsContext,
+		historyContext:   historyContext,
+		RevisionList:     rl,
+		keymap:           keymap,
 	}
 	return &m
 }

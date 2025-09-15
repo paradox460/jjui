@@ -38,10 +38,10 @@ var (
 type Operation struct {
 	*EvologList
 	*view.ViewNode
-	context  *context.MainContext
 	revision *models.RevisionItem
 	mode     mode
 	keyMap   config.KeyMappings[key.Binding]
+	context  *context.RevisionsContext
 }
 
 func (o *Operation) Mount(v *view.ViewNode) {
@@ -56,7 +56,7 @@ func (o *Operation) GetId() view.ViewId {
 }
 
 func (o *Operation) Init() tea.Cmd {
-	o.context.Evolog.SetItems(nil)
+	o.SetItems(nil)
 	return o.load
 }
 
@@ -89,7 +89,7 @@ func (o *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 			return nil
 		case key.Matches(msg, o.keyMap.Apply):
 			from := o.getSelectedEvolog()
-			if current := o.context.Revisions.Current(); current != nil {
+			if current := o.context.Current(); current != nil {
 				o.ViewManager.UnregisterView(o.Id)
 				return o.context.RunCommand(jj.Args(jj.RestoreEvologArgs{From: *from, Into: *current, RestoreDescendants: true}), common.Refresh)
 			}
@@ -141,7 +141,7 @@ func (o *Operation) View() string {
 }
 
 func (o *Operation) Render(commit *models.Commit, pos operations.RenderPosition) string {
-	current := o.context.Revisions.Current()
+	current := o.context.Current()
 	if current == nil {
 		return ""
 	}
@@ -178,8 +178,8 @@ func (o *Operation) load() tea.Msg {
 	}
 }
 
-func NewOperation(ctx *context.MainContext, revision *models.RevisionItem) *Operation {
-	l := ctx.Evolog
+func NewOperation(revisionsContext *context.RevisionsContext) *Operation {
+	l := list.NewList[*models.RevisionItem]()
 	el := &EvologList{
 		List:          l,
 		selectedStyle: common.DefaultPalette.Get("evolog selected"),
@@ -192,9 +192,9 @@ func NewOperation(ctx *context.MainContext, revision *models.RevisionItem) *Oper
 	el.renderer = list.NewRenderer[*models.RevisionItem](l, el, view.NewSizeable(0, 0))
 	o := &Operation{
 		EvologList: el,
-		context:    ctx,
+		context:    revisionsContext,
 		keyMap:     config.Current.GetKeyMap(),
-		revision:   revision,
+		revision:   revisionsContext.Current(),
 	}
 	return o
 }

@@ -19,7 +19,7 @@ var _ view.IViewModel = (*Operation)(nil)
 type Operation struct {
 	*view.ViewNode
 	model   *confirmation.Model
-	context *context.MainContext
+	context *context.RevisionsContext
 }
 
 func (a *Operation) Mount(v *view.ViewNode) {
@@ -53,7 +53,7 @@ func (a *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a *Operation) Render(commit *models.Commit, pos operations.RenderPosition) string {
-	current := a.context.Revisions.Current()
+	current := a.context.Current()
 
 	isSelected := commit != nil && current != nil && commit.GetChangeId() == current.Commit.GetChangeId()
 	if !isSelected || pos != operations.RenderPositionAfter {
@@ -67,9 +67,9 @@ func (a *Operation) close() tea.Msg {
 	return nil
 }
 
-func NewOperation(context *context.MainContext, selectedRevisions jj.SelectedRevisions) *Operation {
+func NewOperation(revisionsContext *context.RevisionsContext, selectedRevisions jj.SelectedRevisions) *Operation {
 	op := &Operation{
-		context: context,
+		context: revisionsContext,
 	}
 
 	var ids []string
@@ -85,7 +85,7 @@ func NewOperation(context *context.MainContext, selectedRevisions jj.SelectedRev
 		message = fmt.Sprintf("Are you sure you want to abandon %d %srevisions?", len(selectedRevisions), conflictingWarning)
 	}
 	cmd := func(ignoreImmutable bool) tea.Cmd {
-		return context.RunCommand(jj.Args(jj.AbandonArgs{
+		return revisionsContext.RunCommand(jj.Args(jj.AbandonArgs{
 			Revisions:       selectedRevisions,
 			RetainBookmarks: true,
 			GlobalArguments: jj.GlobalArguments{IgnoreImmutable: ignoreImmutable},

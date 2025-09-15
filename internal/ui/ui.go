@@ -233,15 +233,16 @@ func (m Model) View() string {
 
 func New(c *context.MainContext) tea.Model {
 	vm := view.NewViewManager()
-	revisionsModel := revisions.New(c, vm)
+	revisionsContext := c.CreateRevisionsContext()
+	revisionsModel := revisions.New(revisionsContext, &c.History, vm)
 	revisionsView := vm.CreateView(revisionsModel)
-	previewView := vm.CreateView(preview.New(c, c.Preview))
+	previewView := vm.CreateView(preview.New(revisionsContext, c.Preview))
 	previewView.Visible = config.Current.Preview.ShowAtStart
-	revsetView := vm.CreateView(revset.New(c))
-	statusView := vm.CreateView(status.New(c))
-	diffView := vm.CreateView(diff.New(c))
+	revsetView := vm.CreateView(revset.New(revisionsContext, &c.History, c.JJConfig.RevsetAliases, c.DefaultRevset))
+	statusView := vm.CreateView(status.New())
+	diffView := vm.CreateView(diff.New(revisionsContext))
 	diffView.Visible = false
-	oplogView := vm.CreateView(oplog.New(c))
+	oplogView := vm.CreateView(oplog.New(c.CreateOplogContext()))
 	oplogView.Visible = false
 
 	vm.FocusView(revisionsView.Id)

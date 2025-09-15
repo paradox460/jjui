@@ -24,11 +24,12 @@ var summaryKey = key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "summary"))
 var compareToMainKey = key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "compare to main"))
 
 type Model struct {
+	context.CommandRunner
 	*view.ViewNode
-	view        viewport.Model
-	keymap      config.KeyMappings[key.Binding]
-	commandArgs *jj.DiffCommandArgs
-	context     *context.MainContext
+	view             viewport.Model
+	keymap           config.KeyMappings[key.Binding]
+	commandArgs      *jj.DiffCommandArgs
+	revisionsContext *context.RevisionsContext
 }
 
 func (m *Model) GetId() view.ViewId {
@@ -149,7 +150,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, compareToMainKey):
 			if m.commandArgs != nil {
 				m.commandArgs.Source = jj.NewDiffRangeArgs(
-					jj.NewSingleSourceFromRevision(m.context.Revisions.Current()),
+					jj.NewSingleSourceFromRevision(m.revisionsContext.Current()),
 					jj.NewRevsetSource("main"),
 				)
 				return m, m.executeCommand()
@@ -171,7 +172,7 @@ func (m *Model) View() string {
 
 func (m *Model) executeCommand() tea.Cmd {
 	return func() tea.Msg {
-		output, _ := m.context.RunCommandImmediate(jj.Args(m.commandArgs))
+		output, _ := m.RunCommandImmediate(jj.Args(m.commandArgs))
 		return updateDiffContentMsg(output)
 	}
 }
@@ -182,13 +183,14 @@ func UpdateDiffCommand(args jj.DiffCommandArgs) tea.Cmd {
 	}
 }
 
-func New(ctx *context.MainContext) view.IViewModel {
+func New(revisionsContext *context.RevisionsContext) view.IViewModel {
 	v := viewport.New(0, 0)
 	v.SetContent("(empty)")
 	m := &Model{
-		context: ctx,
-		view:    v,
-		keymap:  config.Current.GetKeyMap(),
+		CommandRunner:    revisionsContext.CommandRunner,
+		revisionsContext: revisionsContext,
+		view:             v,
+		keymap:           config.Current.GetKeyMap(),
 	}
 	return m
 }

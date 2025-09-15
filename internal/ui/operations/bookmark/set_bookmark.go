@@ -22,7 +22,7 @@ var _ help.KeyMap = (*SetBookmarkOperation)(nil)
 
 type SetBookmarkOperation struct {
 	*view.ViewNode
-	context  *context.MainContext
+	context  *context.RevisionsContext
 	keymap   config.KeyMappings[key.Binding]
 	revision *models.RevisionItem
 	name     textinput.Model
@@ -93,7 +93,7 @@ func (s *SetBookmarkOperation) Render(_ *models.Commit, pos operations.RenderPos
 	return s.name.View() + s.name.TextStyle.Render(" ")
 }
 
-func NewSetBookmarkOperation(context *context.MainContext, revision *models.RevisionItem) view.IViewModel {
+func NewSetBookmarkOperation(context *context.RevisionsContext) view.IViewModel {
 	dimmedStyle := common.DefaultPalette.Get("revisions dimmed").Inline(true)
 	textStyle := common.DefaultPalette.Get("revisions text").Inline(true)
 	t := textinput.New()
@@ -112,7 +112,7 @@ func NewSetBookmarkOperation(context *context.MainContext, revision *models.Revi
 	op := &SetBookmarkOperation{
 		name:     t,
 		keymap:   config.Current.GetKeyMap(),
-		revision: revision,
+		revision: context.Current(),
 		context:  context,
 	}
 	return op

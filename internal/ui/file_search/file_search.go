@@ -26,9 +26,8 @@ var (
 
 type FuzzyFilesModel struct {
 	*view.ViewNode
-	context *context.MainContext
-	keymap  config.KeyMappings[key.Binding]
-	input   textinput.Model
+	keymap config.KeyMappings[key.Binding]
+	input  textinput.Model
 
 	// restore
 	revset          string
@@ -41,9 +40,10 @@ type FuzzyFilesModel struct {
 	debounceTag   int
 
 	// search state
-	max       int
-	styles    fuzzy_search.Styles
-	fuzzyView *fuzzy_search.Model
+	max              int
+	styles           fuzzy_search.Styles
+	fuzzyView        *fuzzy_search.Model
+	revisionsContext *context.RevisionsContext
 }
 
 func (f *FuzzyFilesModel) GetId() view.ViewId {
@@ -83,7 +83,7 @@ func (f *FuzzyFilesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return f, nil
 		case key.Matches(msg, fzfKm.Edit):
 			path := f.fuzzyView.SelectedMatch()
-			return f, exec_prompt.ExecLine(f.context, common.ExecShell, config.GetDefaultEditor()+" "+path)
+			return f, exec_prompt.ExecLine(f.revisionsContext, common.ExecShell, config.GetDefaultEditor()+" "+path)
 		//case key.Matches(msg, fzfKm.Toggle):
 		//	f.revsetPreview = !f.revsetPreview
 		//	return tea.Batch(
@@ -108,7 +108,7 @@ func (f *FuzzyFilesModel) updateRevSet() tea.Cmd {
 	if len(path) > 0 {
 		revset = fmt.Sprintf("files(\"%s\")", path)
 	}
-	f.context.CurrentRevset = revset
+	f.revisionsContext.CurrentRevset = revset
 	f.ViewManager.UnregisterView(f.GetId())
 	f.ViewManager.StopEditing()
 	return common.Refresh
@@ -175,9 +175,9 @@ func (s source) Len() int {
 	return len(s.items)
 }
 
-func NewModel(ctx *context.MainContext) view.IViewModel {
-	current := ctx.Revisions.Current().Commit
-	out, _ := ctx.RunCommandImmediate(jj.FilesInRevision(current))
+func NewModel(revisionsContext *context.RevisionsContext) view.IViewModel {
+	current := revisionsContext.Current().Commit
+	out, _ := revisionsContext.RunCommandImmediate(jj.FilesInRevision(current))
 	keyMap := config.Current.GetKeyMap()
 	i := textinput.New()
 	i.Width = 50
@@ -190,14 +190,14 @@ func NewModel(ctx *context.MainContext) view.IViewModel {
 	}
 
 	model := &FuzzyFilesModel{
-		context:   ctx,
-		keymap:    keyMap,
-		input:     i,
-		revset:    ctx.CurrentRevset,
-		max:       30,
-		commit:    ctx.Revisions.Current().Commit,
-		styles:    fuzzy_search.NewStyles(),
-		fuzzyView: fuzzy_search.NewModel(source, 30),
+		keymap:           keyMap,
+		input:            i,
+		revset:           revisionsContext.CurrentRevset,
+		max:              30,
+		revisionsContext: revisionsContext,
+		commit:           revisionsContext.Current().Commit,
+		styles:           fuzzy_search.NewStyles(),
+		fuzzyView:        fuzzy_search.NewModel(source, 30),
 	}
 	return model
 }

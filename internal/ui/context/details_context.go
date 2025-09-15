@@ -15,19 +15,19 @@ import (
 type DetailsContext struct {
 	CommandRunner
 	*list.CheckableList[*models.RevisionFileItem]
-	Main *MainContext
+	revisionsContext *RevisionsContext
 }
 
-func NewDetailsContext(ctx *MainContext) *DetailsContext {
+func NewDetailsContext(commandRunner CommandRunner, revisionsContext *RevisionsContext) *DetailsContext {
 	return &DetailsContext{
-		CommandRunner: ctx.CommandRunner,
-		CheckableList: list.NewCheckableList[*models.RevisionFileItem](),
-		Main:          ctx,
+		CommandRunner:    commandRunner,
+		revisionsContext: revisionsContext,
+		CheckableList:    list.NewCheckableList[*models.RevisionFileItem](),
 	}
 }
 
 func (m *DetailsContext) Load() tea.Cmd {
-	current := m.Main.Revisions.Current()
+	current := m.revisionsContext.Current()
 	output, err := m.RunCommandImmediate(jj.Args(jj.SnapshotArgs{}))
 	if err == nil {
 		output, err = m.RunCommandImmediate(jj.StatusArgs{Revision: *current}.GetArgs())

@@ -19,8 +19,8 @@ var _ list.IListProvider = (*Model)(nil)
 type Model struct {
 	*OpLogList
 	*view.ViewNode
-	context *context.MainContext
 	keymap  config.KeyMappings[key.Binding]
+	context *context.OplogContext
 }
 
 func (m *Model) CurrentItem() models.IItem {
@@ -107,18 +107,18 @@ func (m *Model) View() string {
 
 func (m *Model) load() tea.Cmd {
 	return func() tea.Msg {
-		m.context.OpLog.Load()
+		m.context.Load()
+		m.context.Cursor = 0
 		m.renderer.Reset()
-		m.context.OpLog.Cursor = 0
 		return ""
 	}
 }
 
-func New(ctx *context.MainContext) view.IViewModel {
+func New(oplogContext *context.OplogContext) view.IViewModel {
 	size := view.NewSizeable(80, 20)
 
 	keyMap := config.Current.GetKeyMap()
-	l := ctx.OpLog
+	l := oplogContext
 	ol := &OpLogList{
 		List:          l.List,
 		selectedStyle: common.DefaultPalette.Get("oplog selected"),
@@ -127,7 +127,7 @@ func New(ctx *context.MainContext) view.IViewModel {
 	ol.renderer = list.NewRenderer[*models.OperationLogItem](l.List, ol, size)
 	m := &Model{
 		OpLogList: ol,
-		context:   ctx,
+		context:   oplogContext,
 		keymap:    keyMap,
 	}
 	return m

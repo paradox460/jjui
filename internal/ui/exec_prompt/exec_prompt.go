@@ -37,14 +37,15 @@ var ctrlR = key.NewBinding(key.WithKeys("ctrl+r"), key.WithHelp("ctrl+r", "sugge
 
 type Model struct {
 	*view.ViewNode
-	context     *context.MainContext
-	fuzzyView   *fuzzy_search.Model
-	keymap      config.KeyMappings[key.Binding]
-	input       textinput.Model
-	styles      styles
-	suggestMode suggestMode
-	execMode    common.ExecMode
-	historyKey  config.HistoryKey
+	context        *context.RevisionsContext
+	fuzzyView      *fuzzy_search.Model
+	keymap         config.KeyMappings[key.Binding]
+	input          textinput.Model
+	styles         styles
+	suggestMode    suggestMode
+	execMode       common.ExecMode
+	historyKey     config.HistoryKey
+	historyContext *context.HistoryContext
 }
 
 func (m *Model) ShortHelp() []key.Binding {
@@ -168,12 +169,12 @@ func (m *Model) saveEditingSuggestions() {
 	if len(strings.TrimSpace(input)) == 0 {
 		return
 	}
-	h := m.context.Histories.GetHistory(m.historyKey, true)
+	h := m.historyContext.GetHistory(m.historyKey, true)
 	h.Append(input)
 }
 
 func (m *Model) loadEditingSuggestions(key config.HistoryKey) tea.Msg {
-	h := m.context.Histories.GetHistory(key, true)
+	h := m.historyContext.GetHistory(key, true)
 	history := h.Entries()
 	m.fuzzyView.Source = source{suggestions: history}
 	m.input.SetSuggestions(history)
@@ -201,7 +202,7 @@ type styles struct {
 	textStyle     lipgloss.Style
 }
 
-func NewExecPrompt(ctx *context.MainContext, mode common.ExecMode) *Model {
+func NewExecPrompt(ctx *context.RevisionsContext, historyContext *context.HistoryContext, mode common.ExecMode) *Model {
 	s := styles{
 		Dimmed:        common.DefaultPalette.Get("exec dimmed"),
 		DimmedMatch:   common.DefaultPalette.Get("exec shortcut"),
@@ -219,13 +220,14 @@ func NewExecPrompt(ctx *context.MainContext, mode common.ExecMode) *Model {
 	i.TextStyle = s.textStyle
 
 	return &Model{
-		context:     ctx,
-		keymap:      config.Current.GetKeyMap(),
-		fuzzyView:   fuzzy_search.NewModel(source{suggestions: make([]string, 0)}, 30),
-		input:       i,
-		styles:      s,
-		suggestMode: suggestOff,
-		execMode:    mode,
-		historyKey:  config.HistoryKey(fmt.Sprintf("exec_%s", mode)),
+		context:        ctx,
+		keymap:         config.Current.GetKeyMap(),
+		fuzzyView:      fuzzy_search.NewModel(source{suggestions: make([]string, 0)}, 30),
+		input:          i,
+		styles:         s,
+		suggestMode:    suggestOff,
+		execMode:       mode,
+		historyContext: historyContext,
+		historyKey:     config.HistoryKey(fmt.Sprintf("exec_%s", mode)),
 	}
 }

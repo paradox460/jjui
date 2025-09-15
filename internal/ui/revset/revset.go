@@ -20,7 +20,7 @@ var _ view.Editable = (*Model)(nil)
 
 type Model struct {
 	*view.ViewNode
-	context         *appContext.MainContext
+	context         *appContext.RevisionsContext
 	autoComplete    *autocompletion.AutoCompletionInput
 	keymap          config.KeyMappings[key.Binding]
 	History         []string
@@ -29,6 +29,8 @@ type Model struct {
 	historyActive   bool
 	MaxHistoryItems int
 	styles          styles
+	history         *config.Histories
+	defaultRevset   string
 }
 
 func (m *Model) OnEdit() {
@@ -160,7 +162,7 @@ func (m *Model) View() string {
 	if m.ViewManager.IsThisEditing(m.Id) {
 		w.WriteString(m.autoComplete.View())
 	} else {
-		revset := m.context.DefaultRevset
+		revset := m.defaultRevset
 		if m.context.CurrentRevset != "" {
 			revset = m.context.CurrentRevset
 		}
@@ -172,23 +174,24 @@ func (m *Model) View() string {
 	return lipgloss.Place(width, height, 0, 0, w.String(), lipgloss.WithWhitespaceBackground(m.styles.textStyle.GetBackground()))
 }
 
-func New(ctx *appContext.MainContext) *Model {
+func New(ctx *appContext.RevisionsContext, history *appContext.HistoryContext, revsetAliases map[string]string, defaultRevset string) *Model {
 	styles := styles{
 		promptStyle: common.DefaultPalette.Get("revset title"),
 		textStyle:   common.DefaultPalette.Get("revset text"),
 	}
 
-	revsetAliases := ctx.JJConfig.RevsetAliases
 	completionProvider := NewCompletionProvider(revsetAliases)
 	autoComplete := autocompletion.New(completionProvider, autocompletion.WithStylePrefix("revset"))
 
-	autoComplete.SetValue(ctx.DefaultRevset)
+	autoComplete.SetValue(defaultRevset)
 	autoComplete.Focus()
 
 	m := &Model{
 		context:         ctx,
+		history:         history.Histories,
 		keymap:          config.Current.GetKeyMap(),
 		autoComplete:    autoComplete,
+		defaultRevset:   defaultRevset,
 		History:         []string{},
 		historyIndex:    -1,
 		MaxHistoryItems: 50,

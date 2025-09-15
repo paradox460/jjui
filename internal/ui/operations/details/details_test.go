@@ -41,12 +41,12 @@ func TestModel_Init_ExecutesStatusCommand(t *testing.T) {
 	commandRunner.Expect(jj.StatusArgs{Revision: revision}.GetArgs()).SetOutput([]byte(StatusOutput))
 	defer commandRunner.Verify()
 
-	appContext := context.NewAppContext(commandRunner, "")
-	appContext.Revisions.SetItems([]*models.RevisionItem{
-		&revision,
-	})
-	appContext.Revisions.Cursor = 0
-	model := NewOperation(appContext, &revision)
+	revisionsContext := context.NewRevisionsContext(commandRunner)
+	revisionsContext.SetItems(
+		[]*models.RevisionItem{&revision},
+	)
+	revisionsContext.SetCursor(0)
+	model := NewOperation(revisionsContext, context.NewDetailsContext(commandRunner, revisionsContext))
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	tm := teatest.NewTestModel(t, model)
@@ -62,12 +62,13 @@ func TestModel_Update_RestoresSelectedFiles(t *testing.T) {
 	commandRunner.Expect(jj.RestoreArgs{Revision: revision, Files: []models.RevisionFileItem{file}}.GetArgs())
 	defer commandRunner.Verify()
 
-	appContext := context.NewAppContext(commandRunner, "")
-	appContext.Revisions.SetItems([]*models.RevisionItem{
+	revisionsContext := context.NewRevisionsContext(commandRunner)
+	revisionsContext.SetItems([]*models.RevisionItem{
 		&revision,
 	})
-	appContext.Revisions.Cursor = 0
-	appContext.Files.SetItems([]*models.RevisionFileItem{
+	revisionsContext.Cursor = 0
+	detailsContext := context.NewDetailsContext(commandRunner, revisionsContext)
+	detailsContext.SetItems([]*models.RevisionFileItem{
 		{
 			Checkable: &models.Checkable{Checked: false},
 			Status:    0,
@@ -76,8 +77,8 @@ func TestModel_Update_RestoresSelectedFiles(t *testing.T) {
 			Conflict:  false,
 		},
 	})
-	appContext.Files.Cursor = 0
-	model := NewOperation(appContext, &revision)
+	detailsContext.Cursor = 0
+	model := NewOperation(revisionsContext, detailsContext)
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.Id)
@@ -102,12 +103,13 @@ func TestModel_Update_SplitsSelectedFiles(t *testing.T) {
 	commandRunner.Expect(jj.SplitArgs{Revision: revision, Files: []models.RevisionFileItem{file}}.GetArgs())
 	defer commandRunner.Verify()
 
-	appContext := context.NewAppContext(commandRunner, "")
-	appContext.Revisions.SetItems([]*models.RevisionItem{
+	revisionsContext := context.NewRevisionsContext(commandRunner)
+	revisionsContext.SetItems([]*models.RevisionItem{
 		&revision,
 	})
-	appContext.Revisions.Cursor = 0
-	model := NewOperation(appContext, &revision)
+	revisionsContext.Cursor = 0
+
+	model := NewOperation(revisionsContext, revisionsContext.CreateDetailsContext())
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.Id)
@@ -148,12 +150,15 @@ func TestModel_Update_HandlesMovedFiles(t *testing.T) {
 	commandRunner.Expect(jj.RestoreArgs{Revision: revision, Files: files}.GetArgs())
 	defer commandRunner.Verify()
 
-	appContext := context.NewAppContext(commandRunner, "")
-	appContext.Revisions.SetItems([]*models.RevisionItem{
+	revisionsContext := context.NewRevisionsContext(commandRunner)
+	revisionsContext.SetItems([]*models.RevisionItem{
 		&revision,
 	})
-	appContext.Revisions.Cursor = 0
-	model := NewOperation(appContext, &revision)
+	revisionsContext.Cursor = 0
+
+	detailsContext := context.NewDetailsContext(commandRunner, revisionsContext)
+
+	model := NewOperation(revisionsContext, detailsContext)
 	viewManager := view.NewViewManager()
 	_ = viewManager.CreateView(model)
 	viewManager.FocusView(model.Id)

@@ -21,14 +21,15 @@ var _ view.IViewModel = (*Operation)(nil)
 
 type Operation struct {
 	*view.ViewNode
-	context  *context.MainContext
-	target   *models.RevisionItem
-	current  *models.RevisionItem
-	toRemove map[string]models.RevisionItem
-	toAdd    map[string]models.RevisionItem
-	keyMap   config.KeyMappings[key.Binding]
-	styles   styles
-	parents  []string
+	context          *context.MainContext
+	target           *models.RevisionItem
+	current          *models.RevisionItem
+	toRemove         map[string]models.RevisionItem
+	toAdd            map[string]models.RevisionItem
+	keyMap           config.KeyMappings[key.Binding]
+	styles           styles
+	parents          []string
+	revisionsContext *context.RevisionsContext
 }
 
 func (o *Operation) Init() tea.Cmd {
@@ -85,7 +86,7 @@ type styles struct {
 }
 
 func (o *Operation) setSelectedRevision() {
-	o.current = o.context.Revisions.Current()
+	o.current = o.revisionsContext.Current()
 }
 
 func (o *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
@@ -151,24 +152,24 @@ func (o *Operation) Render(commit *models.Commit, renderPosition operations.Rend
 	return ""
 }
 
-func NewOperation(ctx *context.MainContext, to *models.RevisionItem) view.IViewModel {
+func NewOperation(revisionsContext *context.RevisionsContext, to *models.RevisionItem) view.IViewModel {
 	styles := styles{
 		sourceMarker: common.DefaultPalette.Get("set_parents source_marker"),
 		targetMarker: common.DefaultPalette.Get("set_parents target_marker"),
 		dimmed:       common.DefaultPalette.Get("set_parents dimmed"),
 	}
-	output, err := ctx.RunCommandImmediate(jj.GetParents(to.Commit.GetChangeId()).GetArgs())
+	output, err := revisionsContext.RunCommandImmediate(jj.GetParents(to.Commit.GetChangeId()).GetArgs())
 	if err != nil {
 		log.Println("Failed to get parents for commit", to.Commit.GetChangeId())
 	}
 	parents := strings.Fields(string(output))
 	return &Operation{
-		context:  ctx,
-		keyMap:   config.Current.GetKeyMap(),
-		parents:  parents,
-		toRemove: make(map[string]models.RevisionItem),
-		toAdd:    make(map[string]models.RevisionItem),
-		target:   to,
-		styles:   styles,
+		revisionsContext: revisionsContext,
+		keyMap:           config.Current.GetKeyMap(),
+		parents:          parents,
+		toRemove:         make(map[string]models.RevisionItem),
+		toAdd:            make(map[string]models.RevisionItem),
+		target:           to,
+		styles:           styles,
 	}
 }

@@ -24,7 +24,7 @@ var _ view.IView = (*Operation)(nil)
 
 type Operation struct {
 	*view.ViewNode
-	context  *context.MainContext
+	context  *context.RevisionsContext
 	keyMap   config.KeyMappings[key.Binding]
 	input    textarea.Model
 	revision *models.RevisionItem
@@ -100,7 +100,8 @@ func (o *Operation) View() string {
 	return o.input.View()
 }
 
-func NewOperation(context *context.MainContext, revision *models.RevisionItem) *Operation {
+func NewOperation(context *context.RevisionsContext) *Operation {
+	revision := context.Current()
 	descOutput, _ := context.RunCommandImmediate(jj.Args(jj.GetDescriptionArgs{Revision: *revision}))
 	desc := string(descOutput)
 

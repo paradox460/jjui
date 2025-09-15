@@ -41,7 +41,7 @@ type refreshPreviewContentMsg struct {
 type Model struct {
 	context.CommandRunner
 	*view.ViewNode
-	context          *context.MainContext
+	context          *context.RevisionsContext
 	previewContext   *context.PreviewContext
 	tag              atomic.Uint64
 	viewRange        *viewRange
@@ -131,6 +131,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			output, _ := m.RunCommandImmediate(jj.TemplatedArgs(config.Current.Preview.RevisionCommand, replacements))
 			m.updatePreviewContent(string(output))
 		case *models.RevisionFileItem:
+			currentRevision := m.context.Current()
+			replacements[jj.ChangeIdPlaceholder] = currentRevision.Commit.ChangeId
+			replacements[jj.FilePlaceholder] = item.FileName
 			output, _ := m.RunCommandImmediate(jj.TemplatedArgs(config.Current.Preview.FileCommand, replacements))
 			m.updatePreviewContent(string(output))
 		case *models.OperationLogItem:
@@ -250,7 +253,7 @@ func (m *Model) getCurrentItem() models.IItem {
 	return ret
 }
 
-func New(ctx *context.MainContext, previewContext *context.PreviewContext) view.IViewModel {
+func New(ctx *context.RevisionsContext, previewContext *context.PreviewContext) view.IViewModel {
 	borderStyle := common.DefaultPalette.GetBorder("preview border", lipgloss.NormalBorder())
 	borderStyle = borderStyle.Inherit(common.DefaultPalette.Get("preview text"))
 
