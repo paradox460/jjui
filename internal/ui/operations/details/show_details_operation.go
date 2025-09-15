@@ -168,7 +168,7 @@ func (o *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			o.revisionsContext.JumpToParent(jj.NewSelectedRevisions(o.revision))
 			selectedItems, _ := o.getSelectedFiles()
 			o.close()
-			op := squash.NewOperation(o.revisionsContext, squash.NewSquashFilesOpts(jj.NewSelectedRevisions(o.revision), selectedItems))
+			op := squash.NewOperation(o.detailsContext.CommandRunner, o.revisionsContext.Current, squash.NewSquashFilesOpts(jj.NewSelectedRevisions(o.revision), selectedItems))
 			v := o.ViewManager.CreateChildView(view.RevisionsViewId, op)
 			o.ViewManager.FocusView(v.GetId())
 			return o, op.Init()

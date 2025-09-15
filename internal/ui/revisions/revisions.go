@@ -268,7 +268,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else if m.Cursor < len(m.Items)-1 {
 					m.Cursor++
 				}
-				op := squash.NewOperation(m.revisionsContext, squash.NewSquashRevisionsOpts(selectedRevisions))
+				op := squash.NewOperation(m.revisionsContext.CommandRunner, m.revisionsContext.Current, squash.NewSquashRevisionsOpts(selectedRevisions))
 				v := m.ViewManager.CreateChildView(m.GetId(), op)
 				m.ViewManager.FocusView(v.GetId())
 				return m, op.Init()

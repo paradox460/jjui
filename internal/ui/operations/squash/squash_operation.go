@@ -19,15 +19,15 @@ import (
 var _ view.IViewModel = (*Operation)(nil)
 
 type Operation struct {
+	context.CommandRunner
 	*view.ViewNode
-	from             jj.SelectedRevisions
-	files            []*models.RevisionFileItem
-	current          *models.RevisionItem
-	keyMap           config.KeyMappings[key.Binding]
-	keepEmptied      bool
-	interactive      bool
-	styles           styles
-	revisionsContext *context.RevisionsContext
+	from        jj.SelectedRevisions
+	files       []*models.RevisionFileItem
+	keyMap      config.KeyMappings[key.Binding]
+	keepEmptied bool
+	interactive bool
+	styles      styles
+	currentFn   func() *models.RevisionItem
 }
 
 func (s *Operation) Init() tea.Cmd {
@@ -41,7 +41,6 @@ func (s *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return s, cmd
 		}
 	case common.RefreshMsg:
-		s.setSelectedRevision()
 		return s, nil
 	}
 	return s, nil
@@ -72,12 +71,13 @@ type styles struct {
 func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, s.keyMap.Apply):
+		current := s.currentFn()
 		s.ViewManager.UnregisterView(s.GetId())
 		var args jj.IGetArgs
 		if len(s.files) > 0 {
 			args = jj.SquashFilesArgs{
 				From:        *s.from[0],
-				Into:        *s.current,
+				Into:        *current,
 				Files:       jj.Convert(s.files),
 				Interactive: false,
 				KeepEmptied: false,
@@ -85,12 +85,12 @@ func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 		} else {
 			args = jj.SquashRevisionArgs{
 				From:        s.from,
-				Into:        *s.current,
+				Into:        *current,
 				Interactive: s.interactive,
 				KeepEmptied: s.keepEmptied,
 			}
 		}
-		return s.revisionsContext.RunInteractiveCommand(jj.Squash(args), common.RefreshAndSelect(s.current.Commit.GetChangeId()))
+		return s.RunInteractiveCommand(jj.Squash(args), common.RefreshAndSelect(current.Commit.GetChangeId()))
 	case key.Matches(msg, s.keyMap.Cancel):
 		s.ViewManager.UnregisterView(s.GetId())
 		return nil
@@ -102,18 +102,13 @@ func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
-func (s *Operation) setSelectedRevision() {
-	if current := s.revisionsContext.Current(); current != nil {
-		s.current = current
-	}
-}
-
 func (s *Operation) Render(commit *models.Commit, pos operations.RenderPosition) string {
 	if pos != operations.RenderBeforeChangeId {
 		return ""
 	}
 
-	isSelected := s.current != nil && s.current.Commit.GetChangeId() == commit.GetChangeId()
+	current := s.currentFn()
+	isSelected := current != nil && current.Commit.GetChangeId() == commit.GetChangeId()
 	if isSelected {
 		return s.styles.targetMarker.Render("<< into >>")
 	}
@@ -164,19 +159,20 @@ func NewSquashFilesOpts(from jj.SelectedRevisions, files []*models.RevisionFileI
 	}
 }
 
-func NewOperation(revisionsContext *context.RevisionsContext, opts SquashOperationOpts) view.IViewModel {
+func NewOperation(runner context.CommandRunner, currentFn func() *models.RevisionItem, opts SquashOperationOpts) view.IViewModel {
 	styles := styles{
 		dimmed:       common.DefaultPalette.Get("squash dimmed"),
 		sourceMarker: common.DefaultPalette.Get("squash source_marker"),
 		targetMarker: common.DefaultPalette.Get("squash target_marker"),
 	}
 	return &Operation{
-		revisionsContext: revisionsContext,
-		keyMap:           config.Current.GetKeyMap(),
-		from:             opts.From,
-		files:            opts.Files,
-		interactive:      opts.Interactive,
-		keepEmptied:      opts.KeepEmptied,
-		styles:           styles,
+		CommandRunner: runner,
+		currentFn:     currentFn,
+		keyMap:        config.Current.GetKeyMap(),
+		from:          opts.From,
+		files:         opts.Files,
+		interactive:   opts.Interactive,
+		keepEmptied:   opts.KeepEmptied,
+		styles:        styles,
 	}
 }
