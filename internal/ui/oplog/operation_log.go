@@ -1,8 +1,6 @@
 package oplog
 
 import (
-	"bytes"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -14,10 +12,6 @@ import (
 	"github.com/idursun/jjui/internal/ui/context"
 	"github.com/idursun/jjui/internal/ui/view"
 )
-
-type updateOpLogMsg struct {
-	Rows []*models.OperationLogItem
-}
 
 var _ view.IViewModel = (*Model)(nil)
 var _ list.IListProvider = (*Model)(nil)
@@ -63,10 +57,10 @@ func (m *Model) Init() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case updateOpLogMsg:
-		m.Items = msg.Rows
-		m.Cursor = 0
-		m.renderer.Reset()
+	//case updateOpLogMsg:
+	//	m.Items = msg.Rows
+	//	m.Cursor = 0
+	//	m.renderer.Reset()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keymap.Cancel):
@@ -113,18 +107,10 @@ func (m *Model) View() string {
 
 func (m *Model) load() tea.Cmd {
 	return func() tea.Msg {
-		output, err := m.context.RunCommandImmediate(jj.Args(jj.OpLogArgs{
-			NoGraph:         false,
-			Limit:           config.Current.OpLog.Limit,
-			GlobalArguments: jj.GlobalArguments{IgnoreWorkingCopy: true, Color: "always"},
-		}))
-
-		if err != nil {
-			panic(err)
-		}
-
-		rows := parseRows(bytes.NewReader(output))
-		return updateOpLogMsg{Rows: rows}
+		m.context.OpLog.Load()
+		m.renderer.Reset()
+		m.context.OpLog.Cursor = 0
+		return ""
 	}
 }
 
@@ -134,11 +120,11 @@ func New(ctx *context.MainContext) view.IViewModel {
 	keyMap := config.Current.GetKeyMap()
 	l := ctx.OpLog
 	ol := &OpLogList{
-		List:          l,
+		List:          l.List,
 		selectedStyle: common.DefaultPalette.Get("oplog selected"),
 		textStyle:     common.DefaultPalette.Get("oplog text"),
 	}
-	ol.renderer = list.NewRenderer[*models.OperationLogItem](l, ol, size)
+	ol.renderer = list.NewRenderer[*models.OperationLogItem](l.List, ol, size)
 	m := &Model{
 		OpLogList: ol,
 		context:   ctx,

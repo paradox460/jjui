@@ -11,7 +11,7 @@ import (
 
 type MainContext struct {
 	CommandRunner
-	OpLog          *list.List[*models.OperationLogItem]
+	OpLog          *OplogContext
 	Revisions      *RevisionsContext
 	Evolog         *list.List[*models.RevisionItem]
 	Files          *DetailsContext
@@ -30,12 +30,12 @@ func NewAppContext(commandRunner CommandRunner, location string) *MainContext {
 		CommandRunner: commandRunner,
 		Location:      location,
 		Histories:     config.NewHistories(),
-		OpLog:         list.NewList[*models.OperationLogItem](),
 	}
 	m.Revisions = NewRevisionsContext(m)
 	m.Files = NewDetailsContext(m)
 	m.Evolog = list.NewList[*models.RevisionItem]()
 	m.Preview = NewPreviewContext(commandRunner)
+	m.OpLog = NewOplogContext(m)
 
 	m.JJConfig = &config.JJConfig{}
 	if output, err := m.RunCommandImmediate(jj.Args(jj.ConfigListAllArgs{})); err == nil {
