@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/idursun/jjui/internal/ui/view"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -28,13 +27,10 @@ var _ view.IViewModel = (*Model)(nil)
 type Model struct {
 	*view.ViewNode
 	spinner spinner.Model
-	input   textinput.Model
 	command string
 	status  commandStatus
 	running bool
 	width   int
-	mode    string
-	history map[string][]string
 	styles  styles
 }
 
@@ -87,75 +83,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Tick(CommandClearDuration, func(time.Time) tea.Msg {
 			return clearMsg(commandToBeCleared)
 		})
-	//case common.FileSearchMsg:
-	//	m.mode = "rev file"
-	//	m.input.Prompt = "> "
-	//	m.loadEditingSuggestions()
-	//	m.fuzzy, m.editStatus = fuzzy_files.NewModel(msg)
-	//	return m, tea.Batch(m.fuzzy.Init(), m.input.Focus())
-	case tea.KeyMsg:
-		switch {
-		//case key.Matches(msg, km.Cancel) && m.IsFocused():
-		//	var cmd tea.Cmd
-		//	if m.fuzzy != nil {
-		//		_, cmd = m.fuzzy.Update(msg)
-		//	}
-		//
-		//	m.fuzzy = nil
-		//	m.editStatus = nil
-		//	m.input.Reset()
-		//	return m, cmd
-		//case key.Matches(msg, accept) && m.IsFocused():
-		//	editMode := m.mode
-		//	input := m.input.Value()
-		//	prompt := m.input.Prompt
-		//	fuzzy := m.fuzzy
-		//	m.saveEditingSuggestions()
-		//
-		//	m.fuzzy = nil
-		//	m.command = ""
-		//	m.editStatus = nil
-		//	m.mode = ""
-		//	m.input.Reset()
-		//
-		//	switch {
-		//	case strings.HasSuffix(editMode, "file"):
-		//		_, cmd := fuzzy.Update(msg)
-		//		return m, cmd
-		//	case strings.HasPrefix(editMode, "exec"):
-		//		return m, func() tea.Msg { return exec_process.ExecMsgFromLine(prompt, input) }
-		//	}
-		//	return m, func() tea.Msg { return common.QuickSearchMsg(input) }
-		//case key.Matches(msg, km.ExecJJ, km.ExecShell) && !m.IsFocused():
-		//	mode := common.ExecJJ
-		//	if key.Matches(msg, km.ExecShell) {
-		//		mode = common.ExecShell
-		//	}
-		//	m.mode = "exec " + mode.Mode
-		//	m.input.Prompt = mode.Prompt
-		//	m.loadEditingSuggestions()
-		//
-		//	m.fuzzy, m.editStatus = fuzzy_input.NewModel(&m.input, m.input.AvailableSuggestions())
-		//	return m, tea.Batch(m.fuzzy.Init(), m.input.Focus())
-		//default:
-		//	if m.IsFocused() {
-		//		var cmd tea.Cmd
-		//		m.input, cmd = m.input.Update(msg)
-		//		if m.fuzzy != nil {
-		//			cmd = tea.Batch(cmd, fuzzy_search.Search(m.input.Value(), msg))
-		//		}
-		//		return m, cmd
-		//	}
-		}
-		return m, nil
 	default:
 		var cmd tea.Cmd
 		if m.status == commandRunning {
 			m.spinner, cmd = m.spinner.Update(msg)
 		}
-		//if m.fuzzy != nil {
-		//	m.fuzzy, cmd = fuzzy_search.Update(m.fuzzy, msg)
-		//}
 		return m, cmd
 	}
 }
@@ -179,25 +111,16 @@ func (m *Model) View() string {
 		commandStatusMark = lipgloss.PlaceHorizontal(m.width, 0, commandStatusMark, lipgloss.WithWhitespaceBackground(m.styles.text.GetBackground()))
 	}
 
+	var mode string
 	// Get the ID of the currently focused view
 	if focusedView := m.ViewManager.GetFocusedView(); focusedView != nil {
-		m.mode = string(focusedView.Id)
+		mode = string(focusedView.Id)
 	}
 
-	modeWidth := max(10, len(m.mode)+2)
+	modeWidth := max(10, len(mode)+2)
 	ret := m.styles.text.Render(strings.ReplaceAll(m.command, "\n", "⏎"))
-	//if m.IsFocused() {
-	//	commandStatusMark = ""
-	//	editKeys, editHelp := m.editStatus()
-	//	if editKeys != nil {
-	//		editHelp = lipgloss.JoinHorizontal(0, m.helpView(editKeys), editHelp)
-	//	}
-	//	promptWidth := len(m.input.Prompt) + 2
-	//	m.input.Width = m.width - modeWidth - promptWidth - lipgloss.Width(editHelp)
-	//	ret = lipgloss.JoinHorizontal(0, m.input.View(), editHelp)
-	//}
 
-	mode := m.styles.title.Width(modeWidth).Render("", m.mode)
+	mode = m.styles.title.Width(modeWidth).Render("", mode)
 	ret = lipgloss.JoinHorizontal(lipgloss.Left, mode, m.styles.text.Render(" "), commandStatusMark, ret)
 	height := lipgloss.Height(ret)
 	return lipgloss.Place(m.width, height, 0, 0, ret, lipgloss.WithWhitespaceBackground(m.styles.text.GetBackground()))
@@ -232,17 +155,10 @@ func New() view.IViewModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 
-	t := textinput.New()
-	t.Width = 50
-	t.TextStyle = styles.text
-	t.CompletionStyle = styles.dimmed
-	t.PlaceholderStyle = styles.dimmed
-
 	m := Model{
 		spinner: s,
 		command: "",
 		status:  none,
-		input:   t,
 		styles:  styles,
 	}
 	return &m
