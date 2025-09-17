@@ -1,5 +1,10 @@
 package view
 
+type ISized interface {
+	Width() int
+	Height() int
+}
+
 type ISizeable interface {
 	SetWidth(w int)
 	SetHeight(h int)

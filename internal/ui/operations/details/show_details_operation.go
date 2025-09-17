@@ -252,7 +252,7 @@ func (o *Operation) View() string {
 		return o.styles.Dimmed.Render("No changes\n")
 	}
 	o.renderer.SetHeight(min(o.Height-5-ch, len(o.Items)))
-	filesView := o.renderer.Render()
+	filesView := o.renderer.Render(o.Cursor)
 
 	rendered := lipgloss.JoinVertical(lipgloss.Top, filesView, confirmationView)
 	// We are trimming spaces from each line to prevent visual artefacts
@@ -286,7 +286,7 @@ func NewOperation(revisionsContext *context.RevisionsContext, detailsContext *co
 		CheckableList: detailsContext.CheckableList,
 		styles:        s,
 	}
-	dl.renderer = list.NewRenderer[*models.RevisionFileItem](dl.List, dl, view.NewSizeable(30, 20))
+	dl.renderer = list.NewRenderer(dl, view.NewSizeable(30, 20))
 	m := &Operation{
 		revision:          revisionsContext.Current(),
 		revisionsContext:  revisionsContext,

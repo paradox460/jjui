@@ -42,6 +42,7 @@ type Operation struct {
 	mode     mode
 	keyMap   config.KeyMappings[key.Binding]
 	context  *context.RevisionsContext
+	renderer *list.ListRenderer
 }
 
 func (o *Operation) Mount(v *view.ViewNode) {
@@ -135,7 +136,7 @@ func (o *Operation) View() string {
 	}
 	h := min(o.Height-5, len(o.Items)*2)
 	o.renderer.SetHeight(h)
-	content := o.renderer.Render()
+	content := o.renderer.Render(o.Cursor)
 	content = lipgloss.PlaceHorizontal(o.Width, lipgloss.Left, content)
 	return content
 }
@@ -189,12 +190,12 @@ func NewOperation(revisionsContext *context.RevisionsContext) *Operation {
 		changeIdStyle: common.DefaultPalette.Get("evolog change_id"),
 		markerStyle:   common.DefaultPalette.Get("evolog target_marker"),
 	}
-	el.renderer = list.NewRenderer[*models.RevisionItem](l, el, view.NewSizeable(0, 0))
 	o := &Operation{
 		EvologList: el,
 		context:    revisionsContext,
 		keyMap:     config.Current.GetKeyMap(),
 		revision:   revisionsContext.Current(),
+		renderer:   list.NewRenderer(el, view.NewSizeable(0, 0)),
 	}
 	return o
 }

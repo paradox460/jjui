@@ -10,36 +10,51 @@ import (
 	"github.com/idursun/jjui/internal/ui/common/list"
 )
 
+var _ list.IList = (*OpLogList)(nil)
+
 type OpLogList struct {
 	*list.List[*models.OperationLogItem]
-	renderer      *list.ListRenderer[*models.OperationLogItem]
 	selectedStyle lipgloss.Style
 	textStyle     lipgloss.Style
 }
 
-func (o *OpLogList) RenderItem(w io.Writer, index int) {
-	row := o.Items[index]
-	isHighlighted := index == o.Cursor
+var _ list.IItemRenderer = (*itemRenderer)(nil)
+
+type itemRenderer struct {
+	row   *models.OperationLogItem
+	style lipgloss.Style
+}
+
+func (i itemRenderer) Render(w io.Writer, width int) {
+	row := i.row
 
 	for _, rowLine := range row.Lines {
 		lw := strings.Builder{}
 		for _, segment := range rowLine.Segments {
-			if isHighlighted {
-				fmt.Fprint(&lw, segment.Style.Inherit(o.selectedStyle).Render(segment.Text))
-			} else {
-				fmt.Fprint(&lw, segment.Style.Inherit(o.textStyle).Render(segment.Text))
-			}
+			fmt.Fprint(&lw, segment.Style.Inherit(i.style).Render(segment.Text))
 		}
 		line := lw.String()
-		if isHighlighted {
-			fmt.Fprint(w, lipgloss.PlaceHorizontal(o.renderer.Width, 0, line, lipgloss.WithWhitespaceBackground(o.selectedStyle.GetBackground())))
-		} else {
-			fmt.Fprint(w, lipgloss.PlaceHorizontal(o.renderer.Width, 0, line, lipgloss.WithWhitespaceBackground(o.textStyle.GetBackground())))
-		}
+		fmt.Fprint(w, lipgloss.PlaceHorizontal(width, 0, line, lipgloss.WithWhitespaceBackground(i.style.GetBackground())))
 		fmt.Fprint(w, "\n")
 	}
 }
 
-func (o *OpLogList) GetItemHeight(index int) int {
-	return len(o.Items[index].Lines)
+func (i itemRenderer) Height() int {
+	return len(i.row.Lines)
+}
+
+func (o *OpLogList) Len() int {
+	return len(o.Items)
+}
+
+func (o *OpLogList) GetRenderer(index int) list.IItemRenderer {
+	item := o.Items[index]
+	style := o.textStyle
+	if index == o.Cursor {
+		style = o.selectedStyle
+	}
+	return &itemRenderer{
+		row:   item,
+		style: style,
+	}
 }

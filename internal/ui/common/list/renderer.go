@@ -8,34 +8,33 @@ import (
 	"github.com/idursun/jjui/internal/ui/view"
 )
 
-type ItemRenderFunc func(w io.Writer, index int)
-
-type IItemRenderer interface {
-	RenderItem(w io.Writer, index int)
-	GetItemHeight(index int) int
+type IList interface {
+	Len() int
+	GetRenderer(index int) IItemRenderer
 }
 
-type ListRenderer[T any] struct {
+type IItemRenderer interface {
+	Render(w io.Writer, width int)
+	Height() int
+}
+
+type ListRenderer struct {
 	*view.ViewRange
-	list             *List[T]
-	renderItemFn     ItemRenderFunc
-	getItemHeight    func(index int) int
+	list             IList
 	buffer           bytes.Buffer
 	skippedLineCount int
 	lineCount        int
 }
 
-func NewRenderer[T any](list *List[T], itemRenderer IItemRenderer, size *view.Sizeable) *ListRenderer[T] {
-	return &ListRenderer[T]{
-		ViewRange:     &view.ViewRange{Sizeable: size, Start: 0, End: size.Height, FirstRowIndex: -1, LastRowIndex: -1},
-		list:          list,
-		renderItemFn:  itemRenderer.RenderItem,
-		getItemHeight: itemRenderer.GetItemHeight,
-		buffer:        bytes.Buffer{},
+func NewRenderer(list IList, size *view.Sizeable) *ListRenderer {
+	return &ListRenderer{
+		ViewRange: &view.ViewRange{Sizeable: size, Start: 0, End: size.Height, FirstRowIndex: -1, LastRowIndex: -1},
+		list:      list,
+		buffer:    bytes.Buffer{},
 	}
 }
 
-func (r *ListRenderer[T]) Write(p []byte) (n int, err error) {
+func (r *ListRenderer) Write(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
@@ -43,7 +42,7 @@ func (r *ListRenderer[T]) Write(p []byte) (n int, err error) {
 	return r.buffer.Write(p)
 }
 
-func (r *ListRenderer[T]) String(start, end int) string {
+func (r *ListRenderer) String(start, end int) string {
 	start = start - r.skippedLineCount
 	end = end - r.skippedLineCount
 	lines := strings.Split(r.buffer.String(), "\n")
@@ -62,19 +61,13 @@ func (r *ListRenderer[T]) String(start, end int) string {
 	return strings.Join(lines[start:end], "\n")
 }
 
-func (r *ListRenderer[T]) Reset() {
-	//if r.list.Cursor < r.ViewRange.FirstRowIndex || r.list.Cursor > r.ViewRange.LastRowIndex {
-	//	r.ViewRange.FirstRowIndex = -1
-	//	r.ViewRange.LastRowIndex = -1
-	//	r.Start = 0
-	//	r.End = r.Height
-	//}
+func (r *ListRenderer) Reset() {
 	r.buffer.Reset()
 	r.lineCount = 0
 	r.skippedLineCount = 0
 }
 
-func (r *ListRenderer[T]) Render() string {
+func (r *ListRenderer) Render(focusIndex int) string {
 	r.Reset()
 	viewHeight := r.End - r.Start
 	if viewHeight != r.Height {
@@ -85,26 +78,27 @@ func (r *ListRenderer[T]) Render() string {
 	selectedLineEnd := -1
 	firstRenderedRowIndex := -1
 	lastRenderedRowIndex := -1
-	for i := range r.list.Items {
-		isHighlighted := i == r.list.Cursor
-		if isHighlighted {
+	for i := range r.list.Len() {
+		isFocused := i == focusIndex
+		itemRenderer := r.list.GetRenderer(i)
+		if isFocused {
 			selectedLineStart = r.totalLineCount()
 			if selectedLineStart < r.Start {
 				r.Start = selectedLineStart
 			}
 		} else {
-			rowLineCount := r.getItemHeight(i)
+			rowLineCount := itemRenderer.Height()
 			if rowLineCount+r.totalLineCount() < r.Start {
 				r.skipLines(rowLineCount)
 				continue
 			}
 		}
-		r.renderItemFn(r, i)
+		itemRenderer.Render(r, r.ViewRange.Width)
 		if firstRenderedRowIndex == -1 {
 			firstRenderedRowIndex = i
 		}
 
-		if isHighlighted {
+		if isFocused {
 			selectedLineEnd = r.totalLineCount()
 		}
 		if selectedLineEnd > 0 && r.totalLineCount() > r.End {
@@ -114,7 +108,7 @@ func (r *ListRenderer[T]) Render() string {
 	}
 
 	if lastRenderedRowIndex == -1 {
-		lastRenderedRowIndex = len(r.list.Items) - 1
+		lastRenderedRowIndex = r.list.Len() - 1
 	}
 
 	r.FirstRowIndex = firstRenderedRowIndex
@@ -130,10 +124,10 @@ func (r *ListRenderer[T]) Render() string {
 	return r.String(r.Start, r.End)
 }
 
-func (r *ListRenderer[T]) skipLines(amount int) {
+func (r *ListRenderer) skipLines(amount int) {
 	r.skippedLineCount = r.skippedLineCount + amount
 }
 
-func (r *ListRenderer[T]) totalLineCount() int {
+func (r *ListRenderer) totalLineCount() int {
 	return r.lineCount + r.skippedLineCount
 }

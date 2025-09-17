@@ -45,6 +45,7 @@ var _ list.IListProvider = (*Model)(nil)
 type Model struct {
 	*view.ViewNode
 	*RevisionList
+	renderer         *list.ListRenderer
 	keymap           config.KeyMappings[key.Binding]
 	output           string
 	err              error
@@ -363,7 +364,7 @@ func (m *Model) View() string {
 		selections[item.Commit.GetChangeId()] = true
 	}
 
-	output := m.renderer.Render()
+	output := m.renderer.Render(m.Cursor)
 	output = m.textStyle.MaxWidth(m.Width).Render(output)
 	return lipgloss.Place(m.Width, m.Height, 0, 0, output)
 }
@@ -398,12 +399,12 @@ func New(revisionsContext *appContext.RevisionsContext, historyContext *appConte
 			return noop{}
 		},
 	}
-	rl.renderer = list.NewRenderer[*models.RevisionItem](revisionsContext.List, rl, view.NewSizeable(0, 0))
 
 	m := Model{
 		revisionsContext: revisionsContext,
 		historyContext:   historyContext,
 		RevisionList:     rl,
+		renderer:         list.NewRenderer(rl, view.NewSizeable(0, 0)),
 		keymap:           keymap,
 	}
 	return &m

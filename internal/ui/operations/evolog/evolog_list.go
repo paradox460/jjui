@@ -10,12 +10,11 @@ import (
 	"github.com/idursun/jjui/internal/ui/common/list"
 )
 
-var _ list.IItemRenderer = (*EvologList)(nil)
 var _ list.IListProvider = (*EvologList)(nil)
+var _ list.IList = (*EvologList)(nil)
 
 type EvologList struct {
 	*list.List[*models.RevisionItem]
-	renderer      *list.ListRenderer[*models.RevisionItem]
 	selectedStyle lipgloss.Style
 	textStyle     lipgloss.Style
 	dimmedStyle   lipgloss.Style
@@ -24,17 +23,16 @@ type EvologList struct {
 	markerStyle   lipgloss.Style
 }
 
-func (e *EvologList) CurrentItem() models.IItem {
-	return e.Current()
+var _ list.IItemRenderer = (*renderer)(nil)
+
+type renderer struct {
+	row           *models.RevisionItem
+	styleOverride lipgloss.Style
+	width         int
 }
 
-func (e *EvologList) CheckedItems() []models.IItem {
-	return nil
-}
-
-func (e *EvologList) RenderItem(w io.Writer, index int) {
-	row := e.Items[index]
-	isHighlighted := index == e.Cursor
+func (r renderer) Render(w io.Writer, width int) {
+	row := r.row
 	for lineIndex := 0; lineIndex < len(row.Lines); lineIndex++ {
 		segmentedLine := row.Lines[lineIndex]
 
@@ -45,22 +43,42 @@ func (e *EvologList) RenderItem(w io.Writer, index int) {
 		}
 
 		for _, segment := range segmentedLine.Segments {
-			style := segment.Style
-			if isHighlighted {
-				style = style.Inherit(e.selectedStyle)
-			}
+			style := segment.Style.Inherit(r.styleOverride)
 			fmt.Fprint(&lw, style.Render(segment.Text))
 		}
 		line := lw.String()
-		if isHighlighted && segmentedLine.Flags&models.Highlightable == models.Highlightable {
-			fmt.Fprint(w, lipgloss.PlaceHorizontal(e.renderer.Width, 0, line, lipgloss.WithWhitespaceBackground(e.selectedStyle.GetBackground())))
-		} else {
-			fmt.Fprint(w, lipgloss.PlaceHorizontal(e.renderer.Width, 0, line, lipgloss.WithWhitespaceBackground(e.textStyle.GetBackground())))
-		}
+		fmt.Fprint(w, lipgloss.PlaceHorizontal(r.width, 0, line, lipgloss.WithWhitespaceBackground(r.styleOverride.GetBackground())))
 		fmt.Fprint(w, "\n")
 	}
 }
 
-func (e *EvologList) GetItemHeight(index int) int {
-	return len(e.Items[index].Lines)
+func (r renderer) Height() int {
+	return len(r.row.Lines)
+}
+
+func (e *EvologList) Len() int {
+	return len(e.Items)
+}
+
+func (e *EvologList) GetRenderer(index int) list.IItemRenderer {
+	row := e.Items[index]
+	selected := index == e.Cursor
+	styleOverride := e.textStyle
+	if selected {
+		styleOverride = e.selectedStyle
+	}
+	return &renderer{
+		row:           row,
+		styleOverride: styleOverride,
+		//TODO: fix this
+		width: 50,
+	}
+}
+
+func (e *EvologList) CurrentItem() models.IItem {
+	return e.Current()
+}
+
+func (e *EvologList) CheckedItems() []models.IItem {
+	return nil
 }

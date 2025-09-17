@@ -26,13 +26,13 @@ var (
 
 type Operation struct {
 	*view.ViewNode
-	renderer *list.ListRenderer[*models.RevisionItem]
+	renderer *list.ListRenderer
 	aceJump  *ace_jump.AceJump
 	keymap   config.KeyMappings[key.Binding]
 	list     *list.List[*models.RevisionItem]
 }
 
-func NewOperation(list *list.List[*models.RevisionItem], renderer *list.ListRenderer[*models.RevisionItem]) view.IViewModel {
+func NewOperation(list *list.List[*models.RevisionItem], renderer *list.ListRenderer) view.IViewModel {
 	return &Operation{
 		list:     list,
 		renderer: renderer,

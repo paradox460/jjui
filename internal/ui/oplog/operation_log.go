@@ -19,8 +19,9 @@ var _ list.IListProvider = (*Model)(nil)
 type Model struct {
 	*OpLogList
 	*view.ViewNode
-	keymap  config.KeyMappings[key.Binding]
-	context *context.OplogContext
+	keymap   config.KeyMappings[key.Binding]
+	context  *context.OplogContext
+	renderer *list.ListRenderer
 }
 
 func (m *Model) CurrentItem() models.IItem {
@@ -100,7 +101,7 @@ func (m *Model) View() string {
 		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, "loading")
 	}
 
-	content := m.renderer.Render()
+	content := m.renderer.Render(m.Cursor)
 	content = lipgloss.PlaceHorizontal(m.Width, lipgloss.Left, content)
 	return m.textStyle.MaxWidth(m.Width).Render(content)
 }
@@ -124,11 +125,11 @@ func New(oplogContext *context.OplogContext) view.IViewModel {
 		selectedStyle: common.DefaultPalette.Get("oplog selected"),
 		textStyle:     common.DefaultPalette.Get("oplog text"),
 	}
-	ol.renderer = list.NewRenderer[*models.OperationLogItem](l.List, ol, size)
 	m := &Model{
 		OpLogList: ol,
 		context:   oplogContext,
 		keymap:    keyMap,
+		renderer:  list.NewRenderer(ol, size),
 	}
 	return m
 }
