@@ -317,7 +317,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.w.ResetViewRange()
 				return m, nil
 			case key.Matches(msg, m.keymap.Details.Mode):
-				m.op, cmd = details.NewOperation(m.context, m.SelectedRevision())
+				m.op, cmd = details.NewOperation(m.context, m.SelectedRevision(), m.Height)
 			case key.Matches(msg, m.keymap.InlineDescribe.Mode):
 				m.op, cmd = describe.NewOperation(m.context, m.SelectedRevision().GetChangeId(), m.Width)
 				return m, cmd

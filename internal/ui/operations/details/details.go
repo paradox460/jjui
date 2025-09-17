@@ -165,7 +165,7 @@ type updateCommitStatusMsg struct {
 	selectedFiles []string
 }
 
-func New(context *context.MainContext, revision *jj.Commit) Model {
+func New(context *context.MainContext, revision *jj.Commit, height int) Model {
 	keyMap := config.Current.GetKeyMap()
 
 	s := styles{
@@ -195,11 +195,12 @@ func New(context *context.MainContext, revision *jj.Commit) Model {
 		context:  context,
 		keyMap:   keyMap,
 		styles:   s,
+		height:   height,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.load(m.revision.GetChangeId()), tea.WindowSize())
+	return m.load(m.revision.GetChangeId())
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
@@ -357,8 +358,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			selectionChangedCmd = m.context.SetSelectedItem(first)
 		}
 		return m, tea.Batch(selectionChangedCmd, m.files.SetItems(items))
-	case tea.WindowSizeMsg:
-		m.height = msg.Height
 	}
 	return m, nil
 }
