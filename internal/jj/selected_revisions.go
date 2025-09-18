@@ -10,6 +10,18 @@ func NewSelectedRevisions(revisions ...*Commit) SelectedRevisions {
 	}
 }
 
+func (s SelectedRevisions) Contains(revision *Commit) bool {
+	if revision == nil {
+		return false
+	}
+	for _, r := range s.Revisions {
+		if r.GetChangeId() == revision.GetChangeId() {
+			return true
+		}
+	}
+	return false
+}
+
 func (s SelectedRevisions) GetIds() []string {
 	var ret []string
 	for _, revision := range s.Revisions {

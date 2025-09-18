@@ -1,7 +1,6 @@
 package duplicate
 
 import (
-	"slices"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -31,14 +30,13 @@ var (
 )
 
 type Operation struct {
-	context        *appContext.MainContext
-	From           jj.SelectedRevisions
-	InsertStart    *jj.Commit
-	To             *jj.Commit
-	Target         Target
-	keyMap         config.KeyMappings[key.Binding]
-	highlightedIds []string
-	styles         styles
+	context     *appContext.MainContext
+	From        jj.SelectedRevisions
+	InsertStart *jj.Commit
+	To          *jj.Commit
+	Target      Target
+	keyMap      config.KeyMappings[key.Binding]
+	styles      styles
 }
 
 type styles struct {
@@ -67,13 +65,7 @@ func (r *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (r *Operation) SetSelectedRevision(commit *jj.Commit) {
-	r.highlightedIds = nil
 	r.To = commit
-	revset := ""
-	if output, err := r.context.RunCommandImmediate(jj.GetIdsFromRevset(revset)); err == nil {
-		ids := strings.Split(strings.TrimSpace(string(output)), "\n")
-		r.highlightedIds = ids
-	}
 }
 
 func (r *Operation) ShortHelp() []key.Binding {
@@ -91,10 +83,10 @@ func (r *Operation) FullHelp() [][]key.Binding {
 
 func (r *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) string {
 	if pos == operations.RenderBeforeChangeId {
-		changeId := commit.GetChangeId()
-		if slices.Contains(r.highlightedIds, changeId) {
-			return r.styles.sourceMarker.Render("<< move >>")
+		if r.From.Contains(commit) {
+			return r.styles.sourceMarker.Render("<< duplicate >>")
 		}
+
 		return ""
 	}
 	expectedPos := operations.RenderPositionBefore
