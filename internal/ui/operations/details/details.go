@@ -3,14 +3,12 @@ package details
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"path"
 	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/idursun/jjui/internal/config"
@@ -55,69 +53,6 @@ func (f item) Title() string {
 func (f item) Description() string { return "" }
 func (f item) FilterValue() string { return f.name }
 
-type itemDelegate struct {
-	selectedHint        string
-	unselectedHint      string
-	isVirtuallySelected bool
-	styles              styles
-}
-
-func (i itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	item, ok := listItem.(item)
-	if !ok {
-		return
-	}
-	var style lipgloss.Style
-	switch item.status {
-	case Added:
-		style = i.styles.Added
-	case Deleted:
-		style = i.styles.Deleted
-	case Modified:
-		style = i.styles.Modified
-	case Renamed:
-		style = i.styles.Renamed
-	}
-
-	if index == m.Index() {
-		style = style.Bold(true).Background(i.styles.Selected.GetBackground())
-	} else {
-		style = style.Background(i.styles.Text.GetBackground())
-	}
-
-	title := item.Title()
-	if item.selected {
-		title = "✓" + title
-	} else {
-		title = " " + title
-	}
-
-	hint := ""
-	if i.showHint() {
-		hint = i.unselectedHint
-		if item.selected || (i.isVirtuallySelected && index == m.Index()) {
-			hint = i.selectedHint
-			title = "✓" + item.Title()
-		}
-	}
-
-	fmt.Fprint(w, style.PaddingRight(1).Render(title))
-	if item.conflict {
-		fmt.Fprint(w, i.styles.Conflict.Render("conflict "))
-	}
-	if hint != "" {
-		fmt.Fprint(w, i.styles.Dimmed.Render(hint))
-	}
-}
-
-func (i itemDelegate) Height() int                         { return 1 }
-func (i itemDelegate) Spacing() int                        { return 0 }
-func (i itemDelegate) Update(tea.Msg, *list.Model) tea.Cmd { return nil }
-
-func (i itemDelegate) showHint() bool {
-	return i.selectedHint != "" || i.unselectedHint != ""
-}
-
 type styles struct {
 	Added    lipgloss.Style
 	Deleted  lipgloss.Style
@@ -130,8 +65,8 @@ type styles struct {
 }
 
 type Model struct {
+	*DetailsList
 	revision     *jj.Commit
-	files        list.Model
 	mode         mode
 	height       int
 	confirmation *confirmation.Model
@@ -140,7 +75,7 @@ type Model struct {
 	styles       styles
 }
 
-func (m Model) ShortHelp() []key.Binding {
+func (m *Model) ShortHelp() []key.Binding {
 	if m.confirmation != nil {
 		return m.confirmation.ShortHelp()
 	}
@@ -156,7 +91,7 @@ func (m Model) ShortHelp() []key.Binding {
 	}
 }
 
-func (m Model) FullHelp() [][]key.Binding {
+func (m *Model) FullHelp() [][]key.Binding {
 	return [][]key.Binding{m.ShortHelp()}
 }
 
@@ -165,7 +100,7 @@ type updateCommitStatusMsg struct {
 	selectedFiles []string
 }
 
-func New(context *context.MainContext, revision *jj.Commit, height int) Model {
+func New(context *context.MainContext, revision *jj.Commit, height int) *Model {
 	keyMap := config.Current.GetKeyMap()
 
 	s := styles{
@@ -179,31 +114,71 @@ func New(context *context.MainContext, revision *jj.Commit, height int) Model {
 		Conflict: common.DefaultPalette.Get("revisions details conflict"),
 	}
 
-	l := list.New(nil, itemDelegate{styles: s}, 0, 0)
-	l.SetFilteringEnabled(false)
-	l.SetShowTitle(false)
-	l.SetShowStatusBar(false)
-	l.SetShowPagination(false)
-	l.SetShowHelp(false)
-	l.KeyMap.CursorUp = keyMap.Up
-	l.KeyMap.CursorDown = keyMap.Down
-	l.Styles.NoItems = s.Dimmed
-	return Model{
-		revision: revision,
-		files:    l,
-		mode:     viewMode,
-		context:  context,
-		keyMap:   keyMap,
-		styles:   s,
-		height:   height,
+	l := NewDetailsList(s, common.NewSizeable(0, height))
+	return &Model{
+		revision:    revision,
+		DetailsList: l,
+		mode:        viewMode,
+		context:     context,
+		keyMap:      keyMap,
+		styles:      s,
+		height:      height,
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return m.load(m.revision.GetChangeId())
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case confirmation.CloseMsg:
+		m.confirmation = nil
+		m.selectedHint = ""
+		m.unselectedHint = ""
+		return m, nil
+	case common.RefreshMsg:
+		return m, m.load(m.revision.GetChangeId())
+	case updateCommitStatusMsg:
+		items := m.createListItems(msg.summary, msg.selectedFiles)
+		var selectionChangedCmd tea.Cmd
+		m.context.ClearCheckedItems(reflect.TypeFor[context.SelectedFile]())
+		if len(items) > 0 {
+			var first context.SelectedItem
+			for _, it := range items {
+				sel := context.SelectedFile{
+					ChangeId: m.revision.GetChangeId(),
+					CommitId: m.revision.CommitId,
+					File:     it.fileName,
+				}
+				if first == nil {
+					first = sel
+				}
+				if it.selected {
+					m.context.AddCheckedItem(sel)
+				}
+			}
+			selectionChangedCmd = m.context.SetSelectedItem(first)
+		}
+		m.setItems(items)
+		return m, selectionChangedCmd
+	default:
+		oldCursor := m.cursor
+		var cmd tea.Cmd
+		var newModel *Model
+		newModel, cmd = m.internalUpdate(msg)
+		if m.cursor != oldCursor {
+			cmd = tea.Batch(cmd, m.context.SetSelectedItem(context.SelectedFile{
+				ChangeId: m.revision.GetChangeId(),
+				CommitId: m.revision.CommitId,
+				File:     m.current().fileName,
+			}))
+		}
+		return newModel, cmd
+	}
+}
+
+func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.confirmation != nil {
@@ -212,11 +187,17 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, cmd
 		}
 		switch {
+		case key.Matches(msg, m.keyMap.Up):
+			m.cursorUp()
+			return m, nil
+		case key.Matches(msg, m.keyMap.Down):
+			m.cursorDown()
+			return m, nil
 		case key.Matches(msg, m.keyMap.Cancel), key.Matches(msg, m.keyMap.Details.Close):
 			return m, common.Close
 		case key.Matches(msg, m.keyMap.Details.Diff):
-			selected, ok := m.files.SelectedItem().(item)
-			if !ok {
+			selected := m.current()
+			if selected == nil {
 				return m, nil
 			}
 			return m, func() tea.Msg {
@@ -224,13 +205,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return common.ShowDiffMsg(output)
 			}
 		case key.Matches(msg, m.keyMap.Details.Split):
-			selectedFiles, isVirtuallySelected := m.getSelectedFiles()
-			m.files.SetDelegate(itemDelegate{
-				isVirtuallySelected: isVirtuallySelected,
-				selectedHint:        "stays as is",
-				unselectedHint:      "moves to the new revision",
-				styles:              m.styles,
-			})
+			selectedFiles := m.getSelectedFiles()
+			m.selectedHint = "stays as is"
+			m.unselectedHint = "moves to the new revision"
 			model := confirmation.New(
 				[]string{"Are you sure you want to split the selected files?"},
 				confirmation.WithStylePrefix("revisions"),
@@ -247,13 +224,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.mode = squashTargetMode
 			return m, common.JumpToParent(m.revision)
 		case key.Matches(msg, m.keyMap.Details.Restore):
-			selectedFiles, isVirtuallySelected := m.getSelectedFiles()
-			m.files.SetDelegate(itemDelegate{
-				isVirtuallySelected: isVirtuallySelected,
-				selectedHint:        "gets restored",
-				unselectedHint:      "stays as is",
-				styles:              m.styles,
-			})
+			selectedFiles := m.getSelectedFiles()
+			m.selectedHint = "gets restored"
+			m.unselectedHint = "stays as is"
 			model := confirmation.New(
 				[]string{"Are you sure you want to restore the selected files?"},
 				confirmation.WithStylePrefix("revisions"),
@@ -267,13 +240,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.confirmation = model
 			return m, m.confirmation.Init()
 		case key.Matches(msg, m.keyMap.Details.Absorb):
-			selectedFiles, isVirtuallySelected := m.getSelectedFiles()
-			m.files.SetDelegate(itemDelegate{
-				isVirtuallySelected: isVirtuallySelected,
-				selectedHint:        "might get absorbed into parents",
-				unselectedHint:      "stays as is",
-				styles:              m.styles,
-			})
+			selectedFiles := m.getSelectedFiles()
+			m.selectedHint = "might get absorbed into parents"
+			m.unselectedHint = "stays as is"
 			model := confirmation.New(
 				[]string{"Are you sure you want to absorb changes from the selected files?"},
 				confirmation.WithStylePrefix("revisions"),
@@ -287,14 +256,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.confirmation = model
 			return m, m.confirmation.Init()
 		case key.Matches(msg, m.keyMap.Details.ToggleSelect):
-			if oldItem, ok := m.files.SelectedItem().(item); ok {
-				isChecked := !oldItem.selected
-				oldItem.selected = isChecked
+			if current := m.current(); current != nil {
+				isChecked := !current.selected
+				current.selected = isChecked
 
 				checkedFile := context.SelectedFile{
 					ChangeId: m.revision.GetChangeId(),
 					CommitId: m.revision.CommitId,
-					File:     oldItem.fileName,
+					File:     current.fileName,
 				}
 				if isChecked {
 					m.context.AddCheckedItem(checkedFile)
@@ -302,68 +271,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.context.RemoveCheckedItem(checkedFile)
 				}
 
-				oldIndex := m.files.Index()
-				m.files.CursorDown()
-
-				curItem := m.files.SelectedItem().(item)
-				return m, tea.Batch(m.files.SetItem(oldIndex, oldItem), m.context.SetSelectedItem(context.SelectedFile{
-					ChangeId: m.revision.GetChangeId(),
-					CommitId: m.revision.CommitId,
-					File:     curItem.fileName,
-				}))
+				m.cursorDown()
 			}
 			return m, nil
 		case key.Matches(msg, m.keyMap.Details.RevisionsChangingFile):
-			if item, ok := m.files.SelectedItem().(item); ok {
-				return m, tea.Batch(common.Close, common.UpdateRevSet(fmt.Sprintf("files(%s)", jj.EscapeFileName(item.fileName))))
-			}
-		default:
-			if len(m.files.Items()) > 0 {
-				var cmd tea.Cmd
-				m.files, cmd = m.files.Update(msg)
-				curItem := m.files.SelectedItem().(item)
-				return m, tea.Batch(cmd, m.context.SetSelectedItem(context.SelectedFile{
-					ChangeId: m.revision.GetChangeId(),
-					CommitId: m.revision.CommitId,
-					File:     curItem.fileName,
-				}))
+			if current := m.current(); current != nil {
+				return m, tea.Batch(common.Close, common.UpdateRevSet(fmt.Sprintf("files(%s)", jj.EscapeFileName(current.fileName))))
 			}
 		}
-	case confirmation.CloseMsg:
-		m.confirmation = nil
-		m.files.SetDelegate(itemDelegate{styles: m.styles})
-		return m, nil
-	case common.RefreshMsg:
-		return m, m.load(m.revision.GetChangeId())
-	case updateCommitStatusMsg:
-		items := m.createListItems(msg.summary, msg.selectedFiles)
-		var selectionChangedCmd tea.Cmd
-		m.context.ClearCheckedItems(reflect.TypeFor[context.SelectedFile]())
-		if len(items) > 0 {
-			var first context.SelectedItem
-			for _, it := range items {
-				it := it.(item)
-				sel := context.SelectedFile{
-					ChangeId: m.revision.GetChangeId(),
-					CommitId: m.revision.CommitId,
-					File:     it.fileName,
-				}
-				if first == nil {
-					first = sel
-				}
-				if it.selected {
-					m.context.AddCheckedItem(sel)
-				}
-			}
-			selectionChangedCmd = m.context.SetSelectedItem(first)
-		}
-		return m, tea.Batch(selectionChangedCmd, m.files.SetItems(items))
 	}
 	return m, nil
 }
 
-func (m Model) createListItems(content string, selectedFiles []string) []list.Item {
-	items := make([]list.Item, 0)
+func (m *Model) createListItems(content string, selectedFiles []string) []*item {
+	var items []*item
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	var conflicts []bool
 	if scanner.Scan() {
@@ -408,7 +329,7 @@ func (m Model) createListItems(content string, selectedFiles []string) []list.It
 				actualFileName = path.Clean(actualFileName[:start] + replacement + actualFileName[end+1:])
 			}
 		}
-		items = append(items, item{
+		items = append(items, &item{
 			status:   status,
 			name:     fileName,
 			fileName: actualFileName,
@@ -420,35 +341,36 @@ func (m Model) createListItems(content string, selectedFiles []string) []list.It
 	return items
 }
 
-func (m Model) getSelectedFiles() ([]string, bool) {
+func (m *Model) getSelectedFiles() []string {
 	selectedFiles := make([]string, 0)
-	if len(m.files.Items()) == 0 {
-		return selectedFiles, false
+	if len(m.files) == 0 {
+		return selectedFiles
 	}
 
-	isVirtuallySelected := false
-	for _, f := range m.files.Items() {
-		if f.(item).selected {
-			selectedFiles = append(selectedFiles, f.(item).fileName)
-			isVirtuallySelected = false
+	for _, f := range m.files {
+		if f.selected {
+			selectedFiles = append(selectedFiles, f.fileName)
 		}
 	}
 	if len(selectedFiles) == 0 {
-		selectedFiles = append(selectedFiles, m.files.SelectedItem().(item).fileName)
-		return selectedFiles, true
+		selectedFiles = append(selectedFiles, m.current().fileName)
+		return selectedFiles
 	}
-	return selectedFiles, isVirtuallySelected
+	return selectedFiles
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	confirmationView := ""
 	ch := 0
 	if m.confirmation != nil {
 		confirmationView = m.confirmation.View()
 		ch = lipgloss.Height(confirmationView)
 	}
-	m.files.SetHeight(min(m.height-5-ch, len(m.files.Items())))
-	filesView := m.files.View()
+	if m.Len() == 0 {
+		return m.styles.Dimmed.Render("No changes\n")
+	}
+	m.SetHeight(min(m.height-5-ch, m.Len()))
+	filesView := m.renderer.Render(m.cursor)
 
 	view := lipgloss.JoinVertical(lipgloss.Top, filesView, confirmationView)
 	// We are trimming spaces from each line to prevent visual artefacts
@@ -465,17 +387,14 @@ func (m Model) View() string {
 	return lipgloss.Place(w, h, 0, 0, view, lipgloss.WithWhitespaceBackground(m.styles.Text.GetBackground()))
 }
 
-func (m Model) load(revision string) tea.Cmd {
+func (m *Model) load(revision string) tea.Cmd {
 	output, err := m.context.RunCommandImmediate(jj.Snapshot())
 	if err == nil {
 		output, err = m.context.RunCommandImmediate(jj.Status(revision))
 		if err == nil {
 			return func() tea.Msg {
 				summary := string(output)
-				selectedFiles, isVirtuallySelected := m.getSelectedFiles()
-				if isVirtuallySelected {
-					selectedFiles = []string{}
-				}
+				selectedFiles := m.getSelectedFiles()
 				return updateCommitStatusMsg{summary, selectedFiles}
 			}
 		}

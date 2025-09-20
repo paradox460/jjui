@@ -18,11 +18,13 @@ const (
 	squashTargetMode
 )
 
+var _ operations.OperationWithOverlay = (*Operation)(nil)
+
 type Operation struct {
 	context           *context.MainContext
-	Overlay           Model
+	Overlay           *Model
 	Current           *jj.Commit
-	keyMap            config.KeyMappings[key.Binding]
+	keymap            config.KeyMappings[key.Binding]
 	targetMarkerStyle lipgloss.Style
 	selected          *jj.Commit
 }
@@ -30,10 +32,10 @@ type Operation struct {
 func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	if s.Overlay.mode == squashTargetMode {
 		switch {
-		case key.Matches(msg, s.keyMap.Cancel):
+		case key.Matches(msg, s.keymap.Cancel):
 			return common.Close
-		case key.Matches(msg, s.keyMap.Apply):
-			selectedFiles, _ := s.Overlay.getSelectedFiles()
+		case key.Matches(msg, s.keymap.Apply):
+			selectedFiles := s.Overlay.getSelectedFiles()
 			return tea.Batch(s.context.RunCommand(jj.SquashFiles(s.selected.GetChangeId(), s.Current.GetChangeId(), selectedFiles), common.Refresh), common.Close)
 		}
 	}
@@ -95,8 +97,8 @@ func NewOperation(context *context.MainContext, selected *jj.Commit, height int)
 		Overlay:           New(context, selected, height),
 		context:           context,
 		selected:          selected,
-		keyMap:            config.Current.GetKeyMap(),
-		targetMarkerStyle: common.DefaultPalette.Get("details target_marker"),
+		keymap:            config.Current.GetKeyMap(),
+		targetMarkerStyle: common.DefaultPalette.Get("revisions details target_marker"),
 	}
 	return op, op.Overlay.Init()
 }
