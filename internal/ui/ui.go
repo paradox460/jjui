@@ -126,6 +126,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.FocusMsg:
+		return m, common.RefreshAndKeepSelections
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keyMap.Cancel) && m.state == common.Error:
