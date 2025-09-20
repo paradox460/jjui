@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/idursun/jjui/internal/parser"
 	"github.com/idursun/jjui/internal/ui/common"
+	"github.com/idursun/jjui/internal/ui/common/list"
 	"github.com/idursun/jjui/internal/ui/operations"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -13,7 +14,6 @@ import (
 	"github.com/idursun/jjui/internal/config"
 	"github.com/idursun/jjui/internal/jj"
 	"github.com/idursun/jjui/internal/ui/context"
-	"github.com/idursun/jjui/internal/ui/graph"
 )
 
 type updateEvologMsg struct {
@@ -27,10 +27,12 @@ const (
 	restoreMode
 )
 
+var _ list.IList = (*Operation)(nil)
+
 type Operation struct {
 	*common.Sizeable
 	context  *context.MainContext
-	w        *graph.Renderer
+	renderer *list.ListRenderer
 	revision *jj.Commit
 	mode     mode
 	rows     []parser.Row
@@ -38,6 +40,23 @@ type Operation struct {
 	keyMap   config.KeyMappings[key.Binding]
 	target   *jj.Commit
 	styles   styles
+}
+
+func (o *Operation) Len() int {
+	return len(o.rows)
+}
+
+func (o *Operation) GetItemRenderer(index int) list.IItemRenderer {
+	row := o.rows[index]
+	selected := index == o.cursor
+	styleOverride := o.styles.textStyle
+	if selected {
+		styleOverride = o.styles.selectedStyle
+	}
+	return &itemRenderer{
+		row:           row,
+		styleOverride: styleOverride,
+	}
 }
 
 func (o *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
@@ -84,6 +103,8 @@ type styles struct {
 	commitIdStyle lipgloss.Style
 	changeIdStyle lipgloss.Style
 	markerStyle   lipgloss.Style
+	textStyle     lipgloss.Style
+	selectedStyle lipgloss.Style
 }
 
 func (o *Operation) SetSelectedRevision(commit *jj.Commit) {
@@ -155,11 +176,12 @@ func (o *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) str
 	if len(o.rows) == 0 {
 		return "loading"
 	}
-	h := min(o.Height-5, len(o.rows)*2)
-	o.w.SetSize(o.Width, h)
-	renderer := graph.NewDefaultRowIterator(o.rows, graph.WithWidth(o.Width), graph.WithStylePrefix("evolog"))
-	renderer.Cursor = o.cursor
-	content := o.w.Render(renderer)
+	o.renderer.SetWidth(o.Width)
+	o.renderer.SetHeight(min(o.Height-5, len(o.rows)*2))
+	//renderer := graph.NewDefaultRowIterator(o.rows, graph.WithWidth(o.Width), graph.WithStylePrefix("evolog"))
+	//renderer.Cursor = o.cursor
+	//content := o.w.Render(renderer)
+	content := o.renderer.Render(o.cursor)
 	content = lipgloss.PlaceHorizontal(o.Width, lipgloss.Left, content)
 	return content
 }
@@ -185,17 +207,18 @@ func NewOperation(context *context.MainContext, revision *jj.Commit, width int, 
 		commitIdStyle: common.DefaultPalette.Get("evolog commit_id"),
 		changeIdStyle: common.DefaultPalette.Get("evolog change_id"),
 		markerStyle:   common.DefaultPalette.Get("evolog target_marker"),
+		textStyle:     common.DefaultPalette.Get("evolog text"),
+		selectedStyle: common.DefaultPalette.Get("evolog selected"),
 	}
-	w := graph.NewRenderer(width, height)
 	o := &Operation{
 		Sizeable: &common.Sizeable{Width: width, Height: height},
 		context:  context,
 		keyMap:   config.Current.GetKeyMap(),
-		w:        w,
 		revision: revision,
 		rows:     nil,
 		cursor:   0,
 		styles:   styles,
 	}
+	o.renderer = list.NewRenderer(o, common.NewSizeable(width, height))
 	return o, o.load
 }
