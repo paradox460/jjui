@@ -421,7 +421,7 @@ func New(c *context.MainContext) tea.Model {
 		context:      c,
 		keyMap:       config.Current.GetKeyMap(),
 		state:        common.Loading,
-		revisions:    &revisionsModel,
+		revisions:    revisionsModel,
 		previewModel: &previewModel,
 		status:       &statusModel,
 		revsetModel:  revset.New(c),

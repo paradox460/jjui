@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/idursun/jjui/internal/ui/ace_jump"
+	"github.com/idursun/jjui/internal/ui/common/list"
 	"github.com/idursun/jjui/internal/ui/operations/duplicate"
 	"github.com/idursun/jjui/internal/ui/operations/revert"
 	"github.com/idursun/jjui/internal/ui/operations/set_parents"
@@ -35,6 +36,8 @@ import (
 	"github.com/idursun/jjui/internal/ui/operations/squash"
 )
 
+var _ list.IList = (*Model)(nil)
+
 type Model struct {
 	*common.Sizeable
 	rows             []parser.Row
@@ -53,8 +56,53 @@ type Model struct {
 	quickSearch      string
 	previousOpLogId  string
 	isLoading        bool
-	w                *graph.Renderer
+	renderer         *list.ListRenderer
 	textStyle        lipgloss.Style
+	dimmedStyle      lipgloss.Style
+	selectedStyle    lipgloss.Style
+}
+
+func (m *Model) Len() int {
+	return len(m.rows)
+}
+
+func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
+	row := m.rows[index]
+	// TODO: re-enable lane detection
+	//inLane := m.Tracer.IsInSameLane(index)
+	isHighlighted := index == m.cursor
+	before := m.op.Render(row.Commit, operations.RenderPositionBefore)
+	after := m.op.Render(row.Commit, operations.RenderPositionAfter)
+	renderOverDescription := ""
+	if isHighlighted {
+		renderOverDescription = m.op.Render(row.Commit, operations.RenderOverDescription)
+	}
+	beforeCommitId := m.op.Render(row.Commit, operations.RenderBeforeCommitId)
+	beforeChangeId := m.op.Render(row.Commit, operations.RenderBeforeChangeId)
+	return &itemRenderer{
+		row:            row,
+		before:         before,
+		after:          after,
+		description:    renderOverDescription,
+		beforeChangeId: beforeChangeId,
+		beforeCommitId: beforeCommitId,
+		isHighlighted:  isHighlighted,
+		SearchText:     m.quickSearch,
+		AceJumpPrefix:  m.aceJump.Prefix(),
+		textStyle:      m.textStyle,
+		dimmedStyle:    m.dimmedStyle,
+		selectedStyle:  m.selectedStyle,
+		isGutterInLane: func(lineIndex, segmentIndex int) bool {
+			//return m.Tracer.IsGutterInLane(index, lineIndex, segmentIndex)
+			return true
+		},
+		updateGutterText: func(lineIndex, segmentIndex int, text string) string {
+			//return m.Tracer.UpdateGutterText(index, lineIndex, segmentIndex, text)
+			return text
+		},
+		inLane: true,
+		op:     m.op,
+	}
 }
 
 type revisionsMsg struct {
@@ -155,7 +203,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		m.quickSearch = string(msg)
 		m.cursor = m.search(0)
 		m.op = operations.NewDefault()
-		m.w.ResetViewRange()
+		m.renderer.Reset()
 		return m, nil
 	case common.CommandCompletedMsg:
 		m.output = msg.Output
@@ -212,7 +260,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 		if m.hasMore {
 			// keep requesting rows until we reach the initial load count or the current cursor position
-			if len(m.offScreenRows) < m.cursor+1 || len(m.offScreenRows) < m.w.LastRowIndex()+1 {
+			if len(m.offScreenRows) < m.cursor+1 || len(m.offScreenRows) < m.renderer.ViewRange.LastRowIndex+1 {
 				return m, m.requestMoreRows(msg.tag)
 			}
 		} else if m.streamer != nil {
@@ -315,7 +363,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.op = operations.NewDefault()
 			case key.Matches(msg, m.keymap.QuickSearchCycle):
 				m.cursor = m.search(m.cursor + 1)
-				m.w.ResetViewRange()
+				m.renderer.Reset()
 				return m, nil
 			case key.Matches(msg, m.keymap.Details.Mode):
 				m.op, cmd = details.NewOperation(m.context, m.SelectedRevision(), m.Height)
@@ -457,19 +505,7 @@ func (m *Model) View() string {
 		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, "(no matching revisions)")
 	}
 
-	renderer := graph.NewDefaultRowIterator(m.rows, graph.WithWidth(m.Width), graph.WithStylePrefix("revisions"), graph.WithSelections(m.context.GetSelectedRevisions()))
-	renderer.Op = m.op
-	renderer.Cursor = m.cursor
-	renderer.SearchText = m.quickSearch
-	renderer.AceJumpPrefix = m.aceJump.Prefix()
-
-	m.w.SetSize(m.Width, m.Height)
-	if config.Current.UI.Tracer.Enabled {
-		start, end := m.w.FirstRowIndex(), m.w.LastRowIndex()+1 // +1 because the last row is inclusive in the view range
-		log.Println("Visible row range:", start, end, "Cursor:", m.cursor, "Total rows:", len(m.rows))
-		renderer.Tracer = parser.NewTracer(m.rows, m.cursor, start, end)
-	}
-	output := m.w.Render(renderer)
+	output := m.renderer.Render(m.cursor)
 	output = m.textStyle.MaxWidth(m.Width).Render(output)
 	return lipgloss.Place(m.Width, m.Height, 0, 0, output)
 }
@@ -580,20 +616,22 @@ func (m *Model) GetCommitIds() []string {
 	return commitIds
 }
 
-func New(c *appContext.MainContext) Model {
+func New(c *appContext.MainContext) *Model {
 	keymap := config.Current.GetKeyMap()
-	w := graph.NewRenderer(20, 10)
-	return Model{
+	m := Model{
 		Sizeable:      &common.Sizeable{Width: 20, Height: 10},
 		context:       c,
-		w:             w,
 		keymap:        keymap,
 		rows:          nil,
 		offScreenRows: nil,
 		op:            operations.NewDefault(),
 		cursor:        0,
 		textStyle:     common.DefaultPalette.Get("revisions text"),
+		dimmedStyle:   common.DefaultPalette.Get("revisions dimmed"),
+		selectedStyle: common.DefaultPalette.Get("revisions selected"),
 	}
+	m.renderer = list.NewRenderer(&m, m.Sizeable)
+	return &m
 }
 
 func (m *Model) updateOperation(msg tea.Msg) (tea.Cmd, bool) {

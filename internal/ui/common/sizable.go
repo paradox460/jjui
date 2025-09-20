@@ -5,6 +5,8 @@ type ISizeable interface {
 	SetHeight(h int)
 }
 
+var _ ISizeable = (*Sizeable)(nil)
+
 type Sizeable struct {
 	Width  int
 	Height int
@@ -16,4 +18,8 @@ func (s *Sizeable) SetWidth(w int) {
 
 func (s *Sizeable) SetHeight(h int) {
 	s.Height = h
+}
+
+func NewSizeable(width, height int) *Sizeable {
+	return &Sizeable{Width: width, Height: height}
 }
