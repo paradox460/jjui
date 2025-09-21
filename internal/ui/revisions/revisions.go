@@ -58,11 +58,10 @@ type Model struct {
 	quickSearch      string
 	previousOpLogId  string
 	isLoading        bool
-	renderer         *list.ListRenderer
+	renderer         *revisionListRenderer
 	textStyle        lipgloss.Style
 	dimmedStyle      lipgloss.Style
 	selectedStyle    lipgloss.Style
-	tracer           parser.LaneTracer
 }
 
 func (m *Model) Cursor() int {
@@ -84,7 +83,7 @@ func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 		before, after, renderOverDescription, beforeCommitId, beforeChangeId string
 	)
 	row := m.rows[index]
-	inLane := m.tracer.IsInSameLane(index)
+	inLane := m.renderer.tracer.IsInSameLane(index)
 	isHighlighted := index == m.cursor
 
 	if op, ok := m.op.(operations.Operation); ok {
@@ -96,10 +95,7 @@ func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 		}
 		beforeCommitId = op.Render(row.Commit, operations.RenderBeforeCommitId)
 		beforeChangeId = op.Render(row.Commit, operations.RenderBeforeChangeId)
-
 	}
-
-	selectedRevisions := m.context.GetSelectedRevisions()
 
 	return &itemRenderer{
 		row:            row,
@@ -113,12 +109,12 @@ func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 		textStyle:      m.textStyle,
 		dimmedStyle:    m.dimmedStyle,
 		selectedStyle:  m.selectedStyle,
-		isChecked:      selectedRevisions[row.Commit.GetChangeId()],
+		isChecked:      m.renderer.selections[row.Commit.GetChangeId()],
 		isGutterInLane: func(lineIndex, segmentIndex int) bool {
-			return m.tracer.IsGutterInLane(index, lineIndex, segmentIndex)
+			return m.renderer.tracer.IsGutterInLane(index, lineIndex, segmentIndex)
 		},
 		updateGutterText: func(lineIndex, segmentIndex int, text string) string {
-			return m.tracer.UpdateGutterText(index, lineIndex, segmentIndex, text)
+			return m.renderer.tracer.UpdateGutterText(index, lineIndex, segmentIndex, text)
 		},
 		inLane: inLane,
 		op:     m.op.(operations.Operation),
@@ -551,10 +547,12 @@ func (m *Model) View() string {
 	if config.Current.UI.Tracer.Enabled {
 		start, end := m.renderer.FirstRowIndex, m.renderer.LastRowIndex+1 // +1 because the last row is inclusive in the view range
 		log.Println("Visible row range:", start, end, "Cursor:", m.cursor, "Total rows:", len(m.rows))
-		m.tracer = parser.NewTracer(m.rows, m.cursor, start, end)
+		m.renderer.tracer = parser.NewTracer(m.rows, m.cursor, start, end)
 	} else {
-		m.tracer = parser.NewNoopTracer()
+		m.renderer.tracer = parser.NewNoopTracer()
 	}
+
+	m.renderer.selections = m.context.GetSelectedRevisions()
 
 	output := m.renderer.Render(m.cursor)
 	output = m.textStyle.MaxWidth(m.Width).Render(output)
@@ -681,7 +679,7 @@ func New(c *appContext.MainContext) *Model {
 		dimmedStyle:   common.DefaultPalette.Get("revisions dimmed"),
 		selectedStyle: common.DefaultPalette.Get("revisions selected"),
 	}
-	m.renderer = list.NewRenderer(&m, m.Sizeable)
+	m.renderer = newRevisionListRenderer(&m, m.Sizeable)
 	return &m
 }
 
