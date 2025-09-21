@@ -99,6 +99,8 @@ func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 
 	}
 
+	selectedRevisions := m.context.GetSelectedRevisions()
+
 	return &itemRenderer{
 		row:            row,
 		before:         before,
@@ -111,6 +113,7 @@ func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 		textStyle:      m.textStyle,
 		dimmedStyle:    m.dimmedStyle,
 		selectedStyle:  m.selectedStyle,
+		isChecked:      selectedRevisions[row.Commit.GetChangeId()],
 		isGutterInLane: func(lineIndex, segmentIndex int) bool {
 			return m.tracer.IsGutterInLane(index, lineIndex, segmentIndex)
 		},

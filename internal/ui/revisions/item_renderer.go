@@ -31,6 +31,7 @@ type itemRenderer struct {
 	op               operations.Operation
 	SearchText       string
 	AceJumpPrefix    *string
+	isChecked        bool
 }
 
 func (ir itemRenderer) writeSection(w io.Writer, current parser.GraphGutter, extended parser.GraphGutter, highlight bool, section string, width int) {
@@ -113,13 +114,15 @@ func (ir itemRenderer) Render(w io.Writer, width int) {
 
 		// render: before change id
 		if segmentedLine.Flags&parser.Revision == parser.Revision {
+			if ir.isChecked {
+				fmt.Fprint(&lw, ir.selectedStyle.Render("✓ "))
+			}
 			if ir.beforeChangeId != "" {
 				fmt.Fprint(&lw, ir.beforeChangeId)
 			}
 		}
 
 		for _, segment := range segmentedLine.Segments {
-
 			// render: after change id
 			if ir.beforeCommitId != "" && segment.Text == row.Commit.CommitId {
 				fmt.Fprint(&lw, ir.beforeCommitId)
