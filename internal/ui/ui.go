@@ -54,10 +54,10 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) handleFocusInputMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
-	// capture all keys while on aceJump mode.
-	if k, ok := msg.(tea.KeyMsg); ok && m.revisions.IsAceJumping() {
-		return m, m.revisions.HandleAceJump(k), true
-	}
+	//// capture all keys while on aceJump mode.
+	//if k, ok := msg.(tea.KeyMsg); ok && m.revisions.IsAceJumping() {
+	//	return m, m.revisions.HandleAceJump(k), true
+	//}
 
 	var cmd tea.Cmd
 	if _, ok := msg.(common.CloseViewMsg); ok {

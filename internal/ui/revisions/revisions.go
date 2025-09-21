@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/idursun/jjui/internal/ui/ace_jump"
 	"github.com/idursun/jjui/internal/ui/common/list"
+	"github.com/idursun/jjui/internal/ui/operations/ace_jump"
 	"github.com/idursun/jjui/internal/ui/operations/duplicate"
 	"github.com/idursun/jjui/internal/ui/operations/revert"
 	"github.com/idursun/jjui/internal/ui/operations/set_parents"
@@ -37,6 +37,7 @@ import (
 )
 
 var _ list.IList = (*Model)(nil)
+var _ list.IListCursor = (*Model)(nil)
 
 type Model struct {
 	*common.Sizeable
@@ -52,7 +53,6 @@ type Model struct {
 	keymap           config.KeyMappings[key.Binding]
 	output           string
 	err              error
-	aceJump          *ace_jump.AceJump
 	quickSearch      string
 	previousOpLogId  string
 	isLoading        bool
@@ -61,6 +61,16 @@ type Model struct {
 	dimmedStyle      lipgloss.Style
 	selectedStyle    lipgloss.Style
 	tracer           parser.LaneTracer
+}
+
+func (m *Model) Cursor() int {
+	return m.cursor
+}
+
+func (m *Model) SetCursor(index int) {
+	if index >= 0 && index < len(m.rows) {
+		m.cursor = index
+	}
 }
 
 func (m *Model) Len() int {
@@ -88,7 +98,6 @@ func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 		beforeCommitId: beforeCommitId,
 		isHighlighted:  isHighlighted,
 		SearchText:     m.quickSearch,
-		AceJumpPrefix:  m.aceJump.Prefix(),
 		textStyle:      m.textStyle,
 		dimmedStyle:    m.dimmedStyle,
 		selectedStyle:  m.selectedStyle,
@@ -339,7 +348,11 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 			return m, m.updateSelection()
 		case key.Matches(msg, m.keymap.AceJump):
-			m.aceJump = m.findAceKeys()
+			op := ace_jump.NewOperation(m, func(index int) parser.Row {
+				return m.rows[index]
+			}, m.renderer.FirstRowIndex, m.renderer.LastRowIndex)
+			m.op = op
+			return m, op.Init()
 		default:
 			if op, ok := m.op.(operations.HandleKey); ok {
 				cmd = op.HandleKey(msg)
@@ -647,7 +660,7 @@ func (m *Model) updateOperation(msg tea.Msg) (tea.Cmd, bool) {
 	// This is currently a hack due to the lack of a mechanism to handle mode changes.
 	// The 'restore' mode name was added to facilitate this special case.
 	// Future refactoring will address mode changes more generically.
-	if m.op != nil && (m.op.Name() == "restore" || m.op.Name() == "target") {
+	if m.op != nil && (m.op.Name() == "restore" || m.op.Name() == "target" || m.op.Name() == "ace jump") {
 		if _, ok := msg.(tea.KeyMsg); ok {
 			return nil, false
 		}

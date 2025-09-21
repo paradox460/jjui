@@ -134,16 +134,17 @@ func (ir itemRenderer) Render(w io.Writer, width int) {
 				style = style.Inherit(ir.dimmedStyle).Faint(true)
 			}
 
-			start, end := segment.FindSubstringRange(ir.SearchText)
-			if start != -1 {
-				mid := lipgloss.NewRange(start, end, style.Reverse(true))
-				fmt.Fprint(&lw, lipgloss.StyleRanges(style.Render(segment.Text), mid))
-			} else if aceIdx := ir.aceJumpIndex(segment, row); aceIdx > -1 {
-				mid := lipgloss.NewRange(aceIdx, aceIdx+1, style.Reverse(true))
-				fmt.Fprint(&lw, lipgloss.StyleRanges(style.Render(segment.Text), mid))
-			} else {
-				fmt.Fprint(&lw, style.Render(segment.Text))
+			op := ir.op
+			if sr, ok := op.(operations.SegmentRenderer); ok {
+				rendered := sr.RenderSegment(style, segment, row)
+				if rendered != "" {
+					fmt.Fprint(&lw, style.Render(rendered))
+					continue
+				}
 			}
+
+			// if the SegmentRenderer did not render anything, fall back to default rendering
+			fmt.Fprint(&lw, style.Render(segment.Text))
 		}
 
 		// render: affected by last operation

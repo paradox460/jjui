@@ -55,7 +55,7 @@ func (j *AceJump) bindKeys() {
 
 // returns the single match or nil after narrowing
 func (j *AceJump) Narrow(k tea.KeyMsg) *AceKey {
-	narrow := []*AceKey{}
+	var narrow []*AceKey
 	prefixIncremented := false
 	for _, a := range j.ace {
 		if key.Matches(k, a.bind) {

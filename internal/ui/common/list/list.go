@@ -7,6 +7,11 @@ type IList interface {
 	GetItemRenderer(index int) IItemRenderer
 }
 
+type IListCursor interface {
+	Cursor() int
+	SetCursor(index int)
+}
+
 type IItemRenderer interface {
 	Render(w io.Writer, width int)
 	Height() int
