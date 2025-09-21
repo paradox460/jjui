@@ -668,7 +668,7 @@ func (m *Model) GetCommitIds() []string {
 func New(c *appContext.MainContext) *Model {
 	keymap := config.Current.GetKeyMap()
 	m := Model{
-		Sizeable:      &common.Sizeable{Width: 20, Height: 10},
+		Sizeable:      &common.Sizeable{Width: 0, Height: 0},
 		context:       c,
 		keymap:        keymap,
 		rows:          nil,

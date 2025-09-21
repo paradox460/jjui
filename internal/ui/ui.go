@@ -412,7 +412,7 @@ func New(c *context.MainContext) tea.Model {
 	previewModel := preview.New(c)
 	statusModel := status.New(c)
 	return Model{
-		Sizeable:     &common.Sizeable{Width: 80, Height: 24},
+		Sizeable:     &common.Sizeable{Width: 0, Height: 0},
 		context:      c,
 		keyMap:       config.Current.GetKeyMap(),
 		state:        common.Loading,
