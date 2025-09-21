@@ -2,12 +2,27 @@ package operations
 
 import (
 	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/idursun/jjui/internal/config"
 	"github.com/idursun/jjui/internal/jj"
 )
 
+var _ Operation = (*Default)(nil)
+
 type Default struct {
 	keyMap config.KeyMappings[key.Binding]
+}
+
+func (n *Default) Init() tea.Cmd {
+	return nil
+}
+
+func (n *Default) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return n, nil
+}
+
+func (n *Default) View() string {
+	return ""
 }
 
 func (n *Default) ShortHelp() []key.Binding {

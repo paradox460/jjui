@@ -17,8 +17,12 @@ func Test_Push(t *testing.T) {
 	defer commandRunner.Verify()
 
 	op := NewModel(test.NewTestContext(commandRunner), nil, 0, 0)
-	tm := teatest.NewTestModel(t, test.NewShell(op))
+	tm := teatest.NewTestModel(t, op)
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
+		return commandRunner.IsVerified()
+	})
+	tm.Quit()
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }
 
@@ -28,11 +32,15 @@ func Test_Fetch(t *testing.T) {
 	defer commandRunner.Verify()
 
 	op := NewModel(test.NewTestContext(commandRunner), nil, 0, 0)
-	tm := teatest.NewTestModel(t, test.NewShell(op))
+	tm := teatest.NewTestModel(t, op)
 	tm.Type("/")
 	tm.Type("fetch")
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
+		return commandRunner.IsVerified()
+	})
+	tm.Quit()
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }
 
@@ -61,11 +69,15 @@ func Test_PushChange(t *testing.T) {
 	defer commandRunner.Verify()
 
 	op := NewModel(test.NewTestContext(commandRunner), &jj.Commit{ChangeId: changeId}, 0, 0)
-	tm := teatest.NewTestModel(t, test.NewShell(op))
+	tm := teatest.NewTestModel(t, op)
 	// Filter for the exact item and ensure selection is at index 0
 	tm.Type("/")
 	tm.Type("git push --change")
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown}) // Ensure first item is selected
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
+		return commandRunner.IsVerified()
+	})
+	tm.Quit()
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }

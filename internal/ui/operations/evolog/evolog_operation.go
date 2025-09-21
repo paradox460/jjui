@@ -28,6 +28,8 @@ const (
 )
 
 var _ list.IList = (*Operation)(nil)
+var _ operations.Operation = (*Operation)(nil)
+var _ common.Editable = (*Operation)(nil)
 
 type Operation struct {
 	*common.Sizeable
@@ -40,6 +42,25 @@ type Operation struct {
 	keyMap   config.KeyMappings[key.Binding]
 	target   *jj.Commit
 	styles   styles
+}
+
+func (o *Operation) IsEditing() bool {
+	return true
+}
+
+func (o *Operation) Init() tea.Cmd {
+	return o.load
+}
+
+func (o *Operation) View() string {
+	if len(o.rows) == 0 {
+		return "loading"
+	}
+	o.renderer.SetWidth(o.Width)
+	o.renderer.SetHeight(min(o.Height-5, len(o.rows)*2))
+	content := o.renderer.Render(o.cursor)
+	content = lipgloss.PlaceHorizontal(o.Width, lipgloss.Left, content)
+	return content
 }
 
 func (o *Operation) Len() int {
@@ -122,7 +143,7 @@ func (o *Operation) FullHelp() [][]key.Binding {
 	return [][]key.Binding{o.ShortHelp()}
 }
 
-func (o *Operation) Update(msg tea.Msg) (operations.OperationWithOverlay, tea.Cmd) {
+func (o *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case updateEvologMsg:
 		o.rows = msg.rows
@@ -172,18 +193,7 @@ func (o *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) str
 	if !isSelected || pos != operations.RenderPositionAfter {
 		return ""
 	}
-
-	if len(o.rows) == 0 {
-		return "loading"
-	}
-	o.renderer.SetWidth(o.Width)
-	o.renderer.SetHeight(min(o.Height-5, len(o.rows)*2))
-	//renderer := graph.NewDefaultRowIterator(o.rows, graph.WithWidth(o.Width), graph.WithStylePrefix("evolog"))
-	//renderer.Cursor = o.cursor
-	//content := o.w.Render(renderer)
-	content := o.renderer.Render(o.cursor)
-	content = lipgloss.PlaceHorizontal(o.Width, lipgloss.Left, content)
-	return content
+	return o.View()
 }
 
 func (o *Operation) Name() string {
@@ -201,7 +211,7 @@ func (o *Operation) load() tea.Msg {
 	}
 }
 
-func NewOperation(context *context.MainContext, revision *jj.Commit, width int, height int) (operations.Operation, tea.Cmd) {
+func NewOperation(context *context.MainContext, revision *jj.Commit, width int, height int) *Operation {
 	styles := styles{
 		dimmedStyle:   common.DefaultPalette.Get("evolog dimmed"),
 		commitIdStyle: common.DefaultPalette.Get("evolog commit_id"),
@@ -220,5 +230,5 @@ func NewOperation(context *context.MainContext, revision *jj.Commit, width int, 
 		styles:   styles,
 	}
 	o.renderer = list.NewRenderer(o, common.NewSizeable(width, height))
-	return o, o.load
+	return o
 }

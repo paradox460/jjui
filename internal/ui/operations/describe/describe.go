@@ -12,11 +12,18 @@ import (
 	"github.com/idursun/jjui/internal/ui/operations"
 )
 
+var _ operations.Operation = (*Operation)(nil)
+var _ common.Editable = (*Operation)(nil)
+
 type Operation struct {
 	context  *context.MainContext
 	keyMap   config.KeyMappings[key.Binding]
 	input    textarea.Model
 	revision string
+}
+
+func (o Operation) IsEditing() bool {
+	return true
 }
 
 func (o Operation) ShortHelp() []key.Binding {
@@ -61,7 +68,7 @@ func (o Operation) Name() string {
 	return "desc"
 }
 
-func (o Operation) Update(msg tea.Msg) (operations.OperationWithOverlay, tea.Cmd) {
+func (o Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch {
 		case key.Matches(keyMsg, o.keyMap.Cancel):

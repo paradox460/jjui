@@ -12,10 +12,31 @@ import (
 	"github.com/idursun/jjui/internal/ui/operations"
 )
 
+var _ operations.Operation = (*Operation)(nil)
+var _ common.Editable = (*Operation)(nil)
+
 type Operation struct {
 	model   *confirmation.Model
 	current *jj.Commit
 	context *context.MainContext
+}
+
+func (a *Operation) IsEditing() bool {
+	return true
+}
+
+func (a *Operation) Init() tea.Cmd {
+	return nil
+}
+
+func (a *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	a.model, cmd = a.model.Update(msg)
+	return a, cmd
+}
+
+func (a *Operation) View() string {
+	return a.model.View()
 }
 
 func (a *Operation) ShortHelp() []key.Binding {
@@ -30,25 +51,19 @@ func (a *Operation) SetSelectedRevision(commit *jj.Commit) {
 	a.current = commit
 }
 
-func (a *Operation) Update(msg tea.Msg) (operations.OperationWithOverlay, tea.Cmd) {
-	var cmd tea.Cmd
-	a.model, cmd = a.model.Update(msg)
-	return a, cmd
-}
-
 func (a *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) string {
 	isSelected := commit != nil && commit.GetChangeId() == a.current.GetChangeId()
 	if !isSelected || pos != operations.RenderPositionAfter {
 		return ""
 	}
-	return a.model.View()
+	return a.View()
 }
 
 func (a *Operation) Name() string {
 	return "abandon"
 }
 
-func NewOperation(context *context.MainContext, selectedRevisions jj.SelectedRevisions) operations.Operation {
+func NewOperation(context *context.MainContext, selectedRevisions jj.SelectedRevisions) *Operation {
 	var ids []string
 	var conflictingWarning string
 	for _, rev := range selectedRevisions.Revisions {

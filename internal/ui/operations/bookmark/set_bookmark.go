@@ -12,10 +12,33 @@ import (
 	"github.com/idursun/jjui/internal/ui/operations"
 )
 
+var _ operations.Operation = (*SetBookmarkOperation)(nil)
+var _ common.Editable = (*SetBookmarkOperation)(nil)
+
 type SetBookmarkOperation struct {
 	context  *context.MainContext
 	revision string
 	name     textinput.Model
+}
+
+func (s *SetBookmarkOperation) IsEditing() bool {
+	return true
+}
+
+func (s *SetBookmarkOperation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc":
+			return s, common.Close
+		case "enter":
+			return s, s.context.RunCommand(jj.BookmarkSet(s.revision, s.name.Value()), common.Close, common.Refresh)
+		}
+	}
+	var cmd tea.Cmd
+	s.name, cmd = s.name.Update(msg)
+	s.name.SetValue(strings.ReplaceAll(s.name.Value(), " ", "-"))
+	return s, cmd
 }
 
 func (s *SetBookmarkOperation) Init() tea.Cmd {
@@ -41,22 +64,6 @@ func (s *SetBookmarkOperation) IsFocused() bool {
 	return true
 }
 
-func (s *SetBookmarkOperation) Update(msg tea.Msg) (operations.OperationWithOverlay, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "esc":
-			return s, common.Close
-		case "enter":
-			return s, s.context.RunCommand(jj.BookmarkSet(s.revision, s.name.Value()), common.Close, common.Refresh)
-		}
-	}
-	var cmd tea.Cmd
-	s.name, cmd = s.name.Update(msg)
-	s.name.SetValue(strings.ReplaceAll(s.name.Value(), " ", "-"))
-	return s, cmd
-}
-
 func (s *SetBookmarkOperation) Render(_ *jj.Commit, pos operations.RenderPosition) string {
 	if pos != operations.RenderBeforeCommitId {
 		return ""
@@ -68,7 +75,7 @@ func (s *SetBookmarkOperation) Name() string {
 	return "bookmark"
 }
 
-func NewSetBookmarkOperation(context *context.MainContext, changeId string) (operations.Operation, tea.Cmd) {
+func NewSetBookmarkOperation(context *context.MainContext, changeId string) *SetBookmarkOperation {
 	dimmedStyle := common.DefaultPalette.Get("revisions dimmed").Inline(true)
 	textStyle := common.DefaultPalette.Get("revisions text").Inline(true)
 	t := textinput.New()
@@ -89,5 +96,5 @@ func NewSetBookmarkOperation(context *context.MainContext, changeId string) (ope
 		revision: changeId,
 		context:  context,
 	}
-	return op, op.Init()
+	return op
 }

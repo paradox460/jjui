@@ -20,21 +20,13 @@ const (
 )
 
 type Operation interface {
+	tea.Model
 	Render(commit *jj.Commit, renderPosition RenderPosition) string
 	Name() string
 }
 
-type OperationWithOverlay interface {
-	Operation
-	Update(msg tea.Msg) (OperationWithOverlay, tea.Cmd)
-}
-
 type TracksSelectedRevision interface {
 	SetSelectedRevision(commit *jj.Commit)
-}
-
-type HandleKey interface {
-	HandleKey(msg tea.KeyMsg) tea.Cmd
 }
 
 type SegmentRenderer interface {

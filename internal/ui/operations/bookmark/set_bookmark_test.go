@@ -18,10 +18,13 @@ func TestSetBookmarkModel_Update(t *testing.T) {
 	commandRunner.Expect(jj.BookmarkSet("revision", "name"))
 	defer commandRunner.Verify()
 
-	op, _ := NewSetBookmarkOperation(test.NewTestContext(commandRunner), "revision")
-	host := test.OperationHost{Operation: op}
-	tm := teatest.NewTestModel(t, host)
+	op := NewSetBookmarkOperation(test.NewTestContext(commandRunner), "revision")
+	tm := teatest.NewTestModel(t, op)
 	tm.Type("name")
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
+		return commandRunner.IsVerified()
+	})
+	tm.Quit()
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }

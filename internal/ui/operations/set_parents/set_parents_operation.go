@@ -15,6 +15,9 @@ import (
 	"github.com/idursun/jjui/internal/ui/operations"
 )
 
+var _ operations.Operation = (*Model)(nil)
+var _ common.Focusable = (*Model)(nil)
+
 type Model struct {
 	context  *context.MainContext
 	target   *jj.Commit
@@ -24,6 +27,25 @@ type Model struct {
 	keyMap   config.KeyMappings[key.Binding]
 	styles   styles
 	parents  []string
+}
+
+func (m *Model) IsFocused() bool {
+	return true
+}
+
+func (m *Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		return m, m.HandleKey(msg)
+	}
+	return m, nil
+}
+
+func (m *Model) View() string {
+	return ""
 }
 
 func (m *Model) ShortHelp() []key.Binding {

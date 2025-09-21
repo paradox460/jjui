@@ -29,7 +29,7 @@ func TestModel_Init_ExecutesStatusCommand(t *testing.T) {
 	commandRunner.Expect(jj.Status(Revision)).SetOutput([]byte(StatusOutput))
 	defer commandRunner.Verify()
 
-	model := test.NewShell(New(test.NewTestContext(commandRunner), Commit, 10))
+	model := NewOperation(test.NewTestContext(commandRunner), Commit, 10)
 	tm := teatest.NewTestModel(t, model)
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
 		return bytes.Contains(bts, []byte("file.txt"))
@@ -43,7 +43,7 @@ func TestModel_Update_RestoresSelectedFiles(t *testing.T) {
 	commandRunner.Expect(jj.Restore(Revision, []string{"file.txt"}))
 	defer commandRunner.Verify()
 
-	tm := teatest.NewTestModel(t, test.NewShell(New(test.NewTestContext(commandRunner), Commit, 10)))
+	tm := teatest.NewTestModel(t, NewOperation(test.NewTestContext(commandRunner), Commit, 10))
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
 		return bytes.Contains(bts, []byte("file.txt"))
 	})
@@ -51,6 +51,10 @@ func TestModel_Update_RestoresSelectedFiles(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeySpace})
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
+		return commandRunner.IsVerified()
+	})
+	tm.Quit()
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }
 
@@ -61,7 +65,7 @@ func TestModel_Update_SplitsSelectedFiles(t *testing.T) {
 	commandRunner.Expect(jj.Split(Revision, []string{"file.txt"}))
 	defer commandRunner.Verify()
 
-	tm := teatest.NewTestModel(t, test.NewShell(New(test.NewTestContext(commandRunner), Commit, 10)))
+	tm := teatest.NewTestModel(t, NewOperation(test.NewTestContext(commandRunner), Commit, 10))
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
 		return bytes.Contains(bts, []byte("file.txt"))
 	})
@@ -69,6 +73,10 @@ func TestModel_Update_SplitsSelectedFiles(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeySpace})
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("s")})
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
+		return commandRunner.IsVerified()
+	})
+	tm.Quit()
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }
 
@@ -79,7 +87,7 @@ func TestModel_Update_HandlesMovedFiles(t *testing.T) {
 	commandRunner.Expect(jj.Restore(Revision, []string{"internal/ui/file.go", "sub/newfile"}))
 	defer commandRunner.Verify()
 
-	tm := teatest.NewTestModel(t, test.NewShell(New(test.NewTestContext(commandRunner), Commit, 10)))
+	tm := teatest.NewTestModel(t, NewOperation(test.NewTestContext(commandRunner), Commit, 10))
 	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
 		return bytes.Contains(bts, []byte("file.go"))
 	})
@@ -88,5 +96,9 @@ func TestModel_Update_HandlesMovedFiles(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeySpace})
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
+		return commandRunner.IsVerified()
+	})
+	tm.Quit()
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }

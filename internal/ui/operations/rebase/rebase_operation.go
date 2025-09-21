@@ -45,6 +45,18 @@ var (
 	}
 )
 
+type styles struct {
+	shortcut     lipgloss.Style
+	dimmed       lipgloss.Style
+	sourceMarker lipgloss.Style
+	targetMarker lipgloss.Style
+	changeId     lipgloss.Style
+	text         lipgloss.Style
+}
+
+var _ operations.Operation = (*Operation)(nil)
+var _ common.Focusable = (*Operation)(nil)
+
 type Operation struct {
 	context        *context.MainContext
 	From           jj.SelectedRevisions
@@ -57,13 +69,23 @@ type Operation struct {
 	styles         styles
 }
 
-type styles struct {
-	shortcut     lipgloss.Style
-	dimmed       lipgloss.Style
-	sourceMarker lipgloss.Style
-	targetMarker lipgloss.Style
-	changeId     lipgloss.Style
-	text         lipgloss.Style
+func (r *Operation) IsFocused() bool {
+	return true
+}
+
+func (r *Operation) Init() tea.Cmd {
+	return nil
+}
+
+func (r *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		return r, r.HandleKey(msg)
+	}
+	return r, nil
+}
+
+func (r *Operation) View() string {
+	return ""
 }
 
 func (r *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {

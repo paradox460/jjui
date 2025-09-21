@@ -14,6 +14,9 @@ import (
 	"github.com/idursun/jjui/internal/ui/operations"
 )
 
+var _ operations.Operation = (*Operation)(nil)
+var _ common.Focusable = (*Operation)(nil)
+
 type Operation struct {
 	context     *context.MainContext
 	from        jj.SelectedRevisions
@@ -24,10 +27,29 @@ type Operation struct {
 	styles      styles
 }
 
+func (s *Operation) IsFocused() bool {
+	return true
+}
+
 type styles struct {
 	dimmed       lipgloss.Style
 	sourceMarker lipgloss.Style
 	targetMarker lipgloss.Style
+}
+
+func (s *Operation) Init() tea.Cmd {
+	return nil
+}
+
+func (s *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		return s, s.HandleKey(msg)
+	}
+	return s, nil
+}
+
+func (s *Operation) View() string {
+	return ""
 }
 
 func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {

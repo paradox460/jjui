@@ -38,6 +38,8 @@ import (
 
 var _ list.IList = (*Model)(nil)
 var _ list.IListCursor = (*Model)(nil)
+var _ common.Focusable = (*Model)(nil)
+var _ common.Editable = (*Model)(nil)
 
 type Model struct {
 	*common.Sizeable
@@ -47,7 +49,7 @@ type Model struct {
 	offScreenRows    []parser.Row
 	streamer         *graph.GraphStreamer
 	hasMore          bool
-	op               operations.Operation
+	op               tea.Model
 	cursor           int
 	context          *appContext.MainContext
 	keymap           config.KeyMappings[key.Binding]
@@ -78,17 +80,25 @@ func (m *Model) Len() int {
 }
 
 func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
+	var (
+		before, after, renderOverDescription, beforeCommitId, beforeChangeId string
+	)
 	row := m.rows[index]
 	inLane := m.tracer.IsInSameLane(index)
 	isHighlighted := index == m.cursor
-	before := m.op.Render(row.Commit, operations.RenderPositionBefore)
-	after := m.op.Render(row.Commit, operations.RenderPositionAfter)
-	renderOverDescription := ""
-	if isHighlighted {
-		renderOverDescription = m.op.Render(row.Commit, operations.RenderOverDescription)
+
+	if op, ok := m.op.(operations.Operation); ok {
+		before = op.Render(row.Commit, operations.RenderPositionBefore)
+		after = op.Render(row.Commit, operations.RenderPositionAfter)
+		renderOverDescription = ""
+		if isHighlighted {
+			renderOverDescription = op.Render(row.Commit, operations.RenderOverDescription)
+		}
+		beforeCommitId = op.Render(row.Commit, operations.RenderBeforeCommitId)
+		beforeChangeId = op.Render(row.Commit, operations.RenderBeforeChangeId)
+
 	}
-	beforeCommitId := m.op.Render(row.Commit, operations.RenderBeforeCommitId)
-	beforeChangeId := m.op.Render(row.Commit, operations.RenderBeforeChangeId)
+
 	return &itemRenderer{
 		row:            row,
 		before:         before,
@@ -108,7 +118,7 @@ func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 			return m.tracer.UpdateGutterText(index, lineIndex, segmentIndex, text)
 		},
 		inLane: inLane,
-		op:     m.op,
+		op:     m.op.(operations.Operation),
 	}
 }
 
@@ -137,6 +147,13 @@ type appendRowsBatchMsg struct {
 	rows    []parser.Row
 	hasMore bool
 	tag     uint64
+}
+
+func (m *Model) IsEditing() bool {
+	if f, ok := m.op.(common.Editable); ok {
+		return f.IsEditing()
+	}
+	return false
 }
 
 func (m *Model) IsFocused() bool {
@@ -202,6 +219,20 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	if k, ok := msg.(revisionsMsg); ok {
 		msg = k.msg
 	}
+	var cmd tea.Cmd
+	var nm *Model
+	nm, cmd = m.internalUpdate(msg)
+
+	if curSelected := m.SelectedRevision(); curSelected != nil {
+		if op, ok := m.op.(operations.TracksSelectedRevision); ok {
+			op.SetSelectedRevision(curSelected)
+		}
+	}
+
+	return nm, cmd
+}
+
+func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case common.CloseViewMsg:
 		m.op = operations.NewDefault()
@@ -229,7 +260,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			m.context.ClearCheckedItems(reflect.TypeFor[appContext.SelectedRevision]())
 		}
 		m.isLoading = true
-		cmd, _ := m.updateOperation(msg)
+		var cmd tea.Cmd
+		m.op, cmd = m.op.Update(msg)
 		if config.Current.Revisions.LogBatching {
 			currentTag := m.tag.Add(1)
 			return m, tea.Batch(m.loadStreaming(m.context.CurrentRevset, msg.SelectedRevision, currentTag), cmd)
@@ -304,18 +336,13 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		return m, m.updateSelection()
 	}
 
-	// TODO: This is duplicated at the end of the function, needs refactoring
-	if curSelected := m.SelectedRevision(); curSelected != nil {
-		if op, ok := m.op.(operations.TracksSelectedRevision); ok {
-			op.SetSelectedRevision(curSelected)
-		}
-	}
-
 	if len(m.rows) == 0 {
 		return m, nil
 	}
 
-	if cmd, ok := m.updateOperation(msg); ok {
+	if op, ok := m.op.(common.Editable); ok && op.IsEditing() {
+		var cmd tea.Cmd
+		m.op, cmd = m.op.Update(msg)
 		return m, cmd
 	}
 
@@ -354,8 +381,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			m.op = op
 			return m, op.Init()
 		default:
-			if op, ok := m.op.(operations.HandleKey); ok {
-				cmd = op.HandleKey(msg)
+			if op, ok := m.op.(common.Focusable); ok && op.IsFocused() {
+				m.op, cmd = m.op.Update(msg)
 				break
 			}
 
@@ -377,7 +404,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				m.renderer.Reset()
 				return m, nil
 			case key.Matches(msg, m.keymap.Details.Mode):
-				m.op, cmd = details.NewOperation(m.context, m.SelectedRevision(), m.Height)
+				m.op = details.NewOperation(m.context, m.SelectedRevision(), m.Height)
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.InlineDescribe.Mode):
 				m.op, cmd = describe.NewOperation(m.context, m.SelectedRevision().GetChangeId(), m.Width)
 				return m, cmd
@@ -398,7 +426,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				selections := m.SelectedRevisions()
 				m.op = abandon.NewOperation(m.context, selections)
 			case key.Matches(msg, m.keymap.Bookmark.Set):
-				m.op, cmd = bookmark.NewSetBookmarkOperation(m.context, m.SelectedRevision().GetChangeId())
+				m.op = bookmark.NewSetBookmarkOperation(m.context, m.SelectedRevision().GetChangeId())
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.Split):
 				currentRevision := m.SelectedRevision().GetChangeId()
 				return m, m.context.RunInteractiveCommand(jj.Split(currentRevision, []string{}), common.Refresh)
@@ -406,7 +435,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				selections := m.SelectedRevisions()
 				return m, m.context.RunInteractiveCommand(jj.Describe(selections), common.Refresh)
 			case key.Matches(msg, m.keymap.Evolog.Mode):
-				m.op, cmd = evolog.NewOperation(m.context, m.SelectedRevision(), m.Width, m.Height)
+				m.op = evolog.NewOperation(m.context, m.SelectedRevision(), m.Width, m.Height)
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.Diff):
 				return m, func() tea.Msg {
 					changeId := m.SelectedRevision().GetChangeId()
@@ -425,24 +455,23 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 					m.cursor++
 				}
 				m.op = squash.NewOperation(m.context, selectedRevisions)
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.Revert.Mode):
 				m.op = revert.NewOperation(m.context, m.SelectedRevisions(), revert.TargetDestination)
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.Rebase.Mode):
 				m.op = rebase.NewOperation(m.context, m.SelectedRevisions(), rebase.SourceRevision, rebase.TargetDestination)
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.Duplicate.Mode):
 				m.op = duplicate.NewOperation(m.context, m.SelectedRevisions(), duplicate.TargetDestination)
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.SetParents):
 				m.op = set_parents.NewModel(m.context, m.SelectedRevision())
+				return m, m.op.Init()
 			}
 		}
 	}
 
-	if curSelected := m.SelectedRevision(); curSelected != nil {
-		if op, ok := m.op.(operations.TracksSelectedRevision); ok {
-			op.SetSelectedRevision(curSelected)
-		}
-		return m, tea.Batch(m.updateSelection(), cmd)
-	}
 	return m, cmd
 }
 
@@ -624,7 +653,7 @@ func (m *Model) search(startIndex int) int {
 }
 
 func (m *Model) CurrentOperation() operations.Operation {
-	return m.op
+	return m.op.(operations.Operation)
 }
 
 func (m *Model) GetCommitIds() []string {
@@ -651,26 +680,6 @@ func New(c *appContext.MainContext) *Model {
 	}
 	m.renderer = list.NewRenderer(&m, m.Sizeable)
 	return &m
-}
-
-func (m *Model) updateOperation(msg tea.Msg) (tea.Cmd, bool) {
-	// HACK: Evolog operation with overlay but also change its mode from select to restore.
-	// In 'select' mode, they function like standard overlays.
-	// 'Restore' mode transforms them into rebase/squash-like operations.
-	// This is currently a hack due to the lack of a mechanism to handle mode changes.
-	// The 'restore' mode name was added to facilitate this special case.
-	// Future refactoring will address mode changes more generically.
-	if m.op != nil && (m.op.Name() == "restore" || m.op.Name() == "target" || m.op.Name() == "ace jump") {
-		if _, ok := msg.(tea.KeyMsg); ok {
-			return nil, false
-		}
-	}
-	var cmd tea.Cmd
-	if op, ok := m.op.(operations.OperationWithOverlay); ok {
-		m.op, cmd = op.Update(msg)
-		return cmd, true
-	}
-	return nil, false
 }
 
 func (m *Model) jumpToParent(revisions jj.SelectedRevisions) {

@@ -20,7 +20,7 @@ var (
 	_ operations.Operation       = (*Operation)(nil)
 	_ operations.SegmentRenderer = (*Operation)(nil)
 	_ common.Focusable           = (*Operation)(nil)
-	_ operations.HandleKey       = (*Operation)(nil)
+	_ common.Editable            = (*Operation)(nil)
 	_ help.KeyMap                = (*Operation)(nil)
 )
 
@@ -30,6 +30,10 @@ type Operation struct {
 	keymap      config.KeyMappings[key.Binding]
 	getItemFn   func(index int) parser.Row
 	first, last int
+}
+
+func (o *Operation) IsEditing() bool {
+	return true
 }
 
 func (o *Operation) IsFocused() bool {

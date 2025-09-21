@@ -96,6 +96,17 @@ func (t *CommandRunner) Verify() {
 	}
 }
 
+func (t *CommandRunner) IsVerified() bool {
+	for _, subCommandExpectations := range t.expectations {
+		for _, e := range subCommandExpectations {
+			if !e.called {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func NewTestCommandRunner(t *testing.T) *CommandRunner {
 	return &CommandRunner{
 		T:            t,
