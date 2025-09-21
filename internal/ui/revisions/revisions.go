@@ -60,6 +60,7 @@ type Model struct {
 	textStyle        lipgloss.Style
 	dimmedStyle      lipgloss.Style
 	selectedStyle    lipgloss.Style
+	tracer           parser.LaneTracer
 }
 
 func (m *Model) Len() int {
@@ -68,8 +69,7 @@ func (m *Model) Len() int {
 
 func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 	row := m.rows[index]
-	// TODO: re-enable lane detection
-	//inLane := m.Tracer.IsInSameLane(index)
+	inLane := m.tracer.IsInSameLane(index)
 	isHighlighted := index == m.cursor
 	before := m.op.Render(row.Commit, operations.RenderPositionBefore)
 	after := m.op.Render(row.Commit, operations.RenderPositionAfter)
@@ -93,14 +93,12 @@ func (m *Model) GetItemRenderer(index int) list.IItemRenderer {
 		dimmedStyle:    m.dimmedStyle,
 		selectedStyle:  m.selectedStyle,
 		isGutterInLane: func(lineIndex, segmentIndex int) bool {
-			//return m.Tracer.IsGutterInLane(index, lineIndex, segmentIndex)
-			return true
+			return m.tracer.IsGutterInLane(index, lineIndex, segmentIndex)
 		},
 		updateGutterText: func(lineIndex, segmentIndex int, text string) string {
-			//return m.Tracer.UpdateGutterText(index, lineIndex, segmentIndex, text)
-			return text
+			return m.tracer.UpdateGutterText(index, lineIndex, segmentIndex, text)
 		},
-		inLane: true,
+		inLane: inLane,
 		op:     m.op,
 	}
 }
@@ -503,6 +501,14 @@ func (m *Model) View() string {
 			return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, "loading")
 		}
 		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, "(no matching revisions)")
+	}
+
+	if config.Current.UI.Tracer.Enabled {
+		start, end := m.renderer.FirstRowIndex, m.renderer.LastRowIndex+1 // +1 because the last row is inclusive in the view range
+		log.Println("Visible row range:", start, end, "Cursor:", m.cursor, "Total rows:", len(m.rows))
+		m.tracer = parser.NewTracer(m.rows, m.cursor, start, end)
+	} else {
+		m.tracer = parser.NewNoopTracer()
 	}
 
 	output := m.renderer.Render(m.cursor)

@@ -10,9 +10,11 @@ type LaneTracer interface {
 	UpdateGutterText(current int, lineIndex int, segmentIndex int, text string) string
 }
 
+var _ LaneTracer = (*NoopTracer)(nil)
+
 type NoopTracer struct{}
 
-func NewNoopTracer() NoopTracer {
+func NewNoopTracer() LaneTracer {
 	return NoopTracer{}
 }
 
@@ -33,7 +35,7 @@ type Tracer struct {
 	highlightedLowestBit uint64
 }
 
-func NewTracer(rows []Row, cursor int, start int, end int) *Tracer {
+func NewTracer(rows []Row, cursor int, start int, end int) LaneTracer {
 	t := &Tracer{
 		rows:       rows,
 		nextLaneId: 0,
