@@ -40,7 +40,6 @@ type Operation struct {
 	Current           *jj.Commit
 	keymap            config.KeyMappings[key.Binding]
 	targetMarkerStyle lipgloss.Style
-	selected          *jj.Commit
 	revision          *jj.Commit
 	mode              mode
 	height            int
@@ -255,7 +254,7 @@ func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 			return common.Close
 		case key.Matches(msg, s.keymap.Apply):
 			selectedFiles := s.getSelectedFiles()
-			return tea.Batch(s.context.RunCommand(jj.SquashFiles(s.selected.GetChangeId(), s.Current.GetChangeId(), selectedFiles), common.Refresh), common.Close)
+			return tea.Batch(s.context.RunCommand(jj.SquashFiles(s.revision.GetChangeId(), s.Current.GetChangeId(), selectedFiles), common.Refresh), common.Close)
 		}
 	}
 	return nil
@@ -426,7 +425,6 @@ func NewOperation(context *context.MainContext, selected *jj.Commit, height int)
 		keyMap:            keyMap,
 		styles:            s,
 		height:            height,
-		selected:          selected,
 		keymap:            config.Current.GetKeyMap(),
 		targetMarkerStyle: common.DefaultPalette.Get("revisions details target_marker"),
 	}
