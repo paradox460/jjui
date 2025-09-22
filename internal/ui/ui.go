@@ -50,7 +50,7 @@ type Model struct {
 type triggerAutoRefreshMsg struct{}
 
 func (m Model) Init() tea.Cmd {
-	return tea.Sequence(tea.SetWindowTitle(fmt.Sprintf("jjui - %s", m.context.Location)), m.revisions.Init(), m.scheduleAutoRefresh())
+	return tea.Batch(tea.SetWindowTitle(fmt.Sprintf("jjui - %s", m.context.Location)), m.revisions.Init(), m.scheduleAutoRefresh())
 }
 
 func (m Model) handleFocusInputMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
