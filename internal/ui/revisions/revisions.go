@@ -349,20 +349,24 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+			return m, m.updateSelection()
 		case key.Matches(msg, m.keymap.Down):
 			if m.cursor < len(m.rows)-1 {
 				m.cursor++
 			} else if m.hasMore {
 				return m, m.requestMoreRows(m.tag.Load())
 			}
+			return m, m.updateSelection()
 		case key.Matches(msg, m.keymap.JumpToParent):
 			m.jumpToParent(m.SelectedRevisions())
+			return m, m.updateSelection()
 		case key.Matches(msg, m.keymap.JumpToChildren):
 			immediate, _ := m.context.RunCommandImmediate(jj.GetFirstChild(m.SelectedRevision()))
 			index := m.selectRevision(string(immediate))
 			if index != -1 {
 				m.cursor = index
 			}
+			return m, m.updateSelection()
 		case key.Matches(msg, m.keymap.JumpToWorkingCopy):
 			workingCopyIndex := m.selectRevision("@")
 			if workingCopyIndex != -1 {
@@ -405,21 +409,22 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 				m.op = describe.NewOperation(m.context, m.SelectedRevision().GetChangeId(), m.Width)
 				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.New):
-				cmd = m.context.RunCommand(jj.New(m.SelectedRevisions()), common.RefreshAndSelect("@"))
+				return m, m.context.RunCommand(jj.New(m.SelectedRevisions()), common.RefreshAndSelect("@"))
 			case key.Matches(msg, m.keymap.Commit):
-				cmd = m.context.RunInteractiveCommand(jj.CommitWorkingCopy(), common.Refresh)
+				return m, m.context.RunInteractiveCommand(jj.CommitWorkingCopy(), common.Refresh)
 			case key.Matches(msg, m.keymap.Edit, m.keymap.ForceEdit):
 				ignoreImmutable := key.Matches(msg, m.keymap.ForceEdit)
-				cmd = m.context.RunCommand(jj.Edit(m.SelectedRevision().GetChangeId(), ignoreImmutable), common.Refresh)
+				return m, m.context.RunCommand(jj.Edit(m.SelectedRevision().GetChangeId(), ignoreImmutable), common.Refresh)
 			case key.Matches(msg, m.keymap.Diffedit):
 				changeId := m.SelectedRevision().GetChangeId()
-				cmd = m.context.RunInteractiveCommand(jj.DiffEdit(changeId), common.Refresh)
+				return m, m.context.RunInteractiveCommand(jj.DiffEdit(changeId), common.Refresh)
 			case key.Matches(msg, m.keymap.Absorb):
 				changeId := m.SelectedRevision().GetChangeId()
-				cmd = m.context.RunCommand(jj.Absorb(changeId), common.Refresh)
+				return m, m.context.RunCommand(jj.Absorb(changeId), common.Refresh)
 			case key.Matches(msg, m.keymap.Abandon):
 				selections := m.SelectedRevisions()
 				m.op = abandon.NewOperation(m.context, selections)
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.Bookmark.Set):
 				m.op = bookmark.NewSetBookmarkOperation(m.context, m.SelectedRevision().GetChangeId())
 				return m, m.op.Init()
@@ -439,7 +444,7 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 					return common.ShowDiffMsg(output)
 				}
 			case key.Matches(msg, m.keymap.Refresh):
-				cmd = common.Refresh
+				return m, common.Refresh
 			case key.Matches(msg, m.keymap.Squash.Mode):
 				return m.startSquash(m.SelectedRevisions(), nil)
 			case key.Matches(msg, m.keymap.Revert.Mode):
