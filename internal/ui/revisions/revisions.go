@@ -402,8 +402,8 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 				m.op = details.NewOperation(m.context, m.SelectedRevision(), m.Height)
 				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.InlineDescribe.Mode):
-				m.op, cmd = describe.NewOperation(m.context, m.SelectedRevision().GetChangeId(), m.Width)
-				return m, cmd
+				m.op = describe.NewOperation(m.context, m.SelectedRevision().GetChangeId(), m.Width)
+				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.New):
 				cmd = m.context.RunCommand(jj.New(m.SelectedRevisions()), common.RefreshAndSelect("@"))
 			case key.Matches(msg, m.keymap.Commit):
