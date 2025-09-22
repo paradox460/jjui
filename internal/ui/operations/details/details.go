@@ -24,13 +24,6 @@ type updateCommitStatusMsg struct {
 	selectedFiles []string
 }
 
-type mode int
-
-const (
-	viewMode mode = iota
-	squashTargetMode
-)
-
 var _ operations.Operation = (*Operation)(nil)
 var _ common.Editable = (*Operation)(nil)
 
@@ -41,7 +34,6 @@ type Operation struct {
 	keymap            config.KeyMappings[key.Binding]
 	targetMarkerStyle lipgloss.Style
 	revision          *jj.Commit
-	mode              mode
 	height            int
 	confirmation      *confirmation.Model
 	keyMap            config.KeyMappings[key.Binding]
@@ -57,61 +49,51 @@ func (s *Operation) Init() tea.Cmd {
 }
 
 func (s *Operation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch s.mode {
-	case viewMode:
-		switch msg := msg.(type) {
-		case confirmation.CloseMsg:
-			s.confirmation = nil
-			s.selectedHint = ""
-			s.unselectedHint = ""
-			return s, nil
-		case common.RefreshMsg:
-			return s, s.load(s.revision.GetChangeId())
-		case updateCommitStatusMsg:
-			items := s.createListItems(msg.summary, msg.selectedFiles)
-			var selectionChangedCmd tea.Cmd
-			s.context.ClearCheckedItems(reflect.TypeFor[context.SelectedFile]())
-			if len(items) > 0 {
-				var first context.SelectedItem
-				for _, it := range items {
-					sel := context.SelectedFile{
-						ChangeId: s.revision.GetChangeId(),
-						CommitId: s.revision.CommitId,
-						File:     it.fileName,
-					}
-					if first == nil {
-						first = sel
-					}
-					if it.selected {
-						s.context.AddCheckedItem(sel)
-					}
-				}
-				selectionChangedCmd = s.context.SetSelectedItem(first)
-			}
-			s.setItems(items)
-			return s, selectionChangedCmd
-		default:
-			oldCursor := s.cursor
-			var cmd tea.Cmd
-			var newModel *Operation
-			newModel, cmd = s.internalUpdate(msg)
-			if s.cursor != oldCursor {
-				cmd = tea.Batch(cmd, s.context.SetSelectedItem(context.SelectedFile{
+	switch msg := msg.(type) {
+	case confirmation.CloseMsg:
+		s.confirmation = nil
+		s.selectedHint = ""
+		s.unselectedHint = ""
+		return s, nil
+	case common.RefreshMsg:
+		return s, s.load(s.revision.GetChangeId())
+	case updateCommitStatusMsg:
+		items := s.createListItems(msg.summary, msg.selectedFiles)
+		var selectionChangedCmd tea.Cmd
+		s.context.ClearCheckedItems(reflect.TypeFor[context.SelectedFile]())
+		if len(items) > 0 {
+			var first context.SelectedItem
+			for _, it := range items {
+				sel := context.SelectedFile{
 					ChangeId: s.revision.GetChangeId(),
 					CommitId: s.revision.CommitId,
-					File:     s.current().fileName,
-				}))
+					File:     it.fileName,
+				}
+				if first == nil {
+					first = sel
+				}
+				if it.selected {
+					s.context.AddCheckedItem(sel)
+				}
 			}
-			return newModel, cmd
+			selectionChangedCmd = s.context.SetSelectedItem(first)
 		}
-	case squashTargetMode:
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			cmd := s.HandleKey(msg)
-			return s, cmd
+		s.setItems(items)
+		return s, selectionChangedCmd
+	default:
+		oldCursor := s.cursor
+		var cmd tea.Cmd
+		var newModel *Operation
+		newModel, cmd = s.internalUpdate(msg)
+		if s.cursor != oldCursor {
+			cmd = tea.Batch(cmd, s.context.SetSelectedItem(context.SelectedFile{
+				ChangeId: s.revision.GetChangeId(),
+				CommitId: s.revision.CommitId,
+				File:     s.current().fileName,
+			}))
 		}
+		return newModel, cmd
 	}
-	return s, nil
 }
 
 func (s *Operation) internalUpdate(msg tea.Msg) (*Operation, tea.Cmd) {
@@ -157,8 +139,9 @@ func (s *Operation) internalUpdate(msg tea.Msg) (*Operation, tea.Cmd) {
 			s.confirmation = model
 			return s, s.confirmation.Init()
 		case key.Matches(msg, s.keyMap.Details.Squash):
-			s.mode = squashTargetMode
-			return s, common.JumpToParent(s.revision)
+			return s, func() tea.Msg {
+				return common.StartSquashOperationMsg{Revision: s.revision, Files: s.getSelectedFiles()}
+			}
 		case key.Matches(msg, s.keyMap.Details.Restore):
 			selectedFiles := s.getSelectedFiles()
 			s.selectedHint = "gets restored"
@@ -247,19 +230,6 @@ func (s *Operation) View() string {
 	return lipgloss.Place(w, h, 0, 0, view, lipgloss.WithWhitespaceBackground(s.styles.Text.GetBackground()))
 }
 
-func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
-	if s.mode == squashTargetMode {
-		switch {
-		case key.Matches(msg, s.keymap.Cancel):
-			return common.Close
-		case key.Matches(msg, s.keymap.Apply):
-			selectedFiles := s.getSelectedFiles()
-			return tea.Batch(s.context.RunCommand(jj.SquashFiles(s.revision.GetChangeId(), s.Current.GetChangeId(), selectedFiles), common.Refresh), common.Close)
-		}
-	}
-	return nil
-}
-
 func (s *Operation) SetSelectedRevision(commit *jj.Commit) {
 	s.Current = commit
 }
@@ -285,13 +255,6 @@ func (s *Operation) FullHelp() [][]key.Binding {
 }
 
 func (s *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) string {
-	if s.mode == squashTargetMode {
-		if pos == operations.RenderBeforeChangeId && s.Current != nil && s.Current.GetChangeId() == commit.GetChangeId() {
-			return s.targetMarkerStyle.Render("< squash >")
-		}
-		return ""
-	}
-
 	isSelected := s.Current != nil && s.Current.GetChangeId() == commit.GetChangeId()
 	if !isSelected || pos != operations.RenderPositionAfter {
 		return ""
@@ -300,9 +263,6 @@ func (s *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) str
 }
 
 func (s *Operation) Name() string {
-	if s.mode == squashTargetMode {
-		return "target"
-	}
 	return "details"
 }
 
@@ -421,7 +381,6 @@ func NewOperation(context *context.MainContext, selected *jj.Commit, height int)
 		DetailsList:       l,
 		context:           context,
 		revision:          selected,
-		mode:              viewMode,
 		keyMap:            keyMap,
 		styles:            s,
 		height:            height,

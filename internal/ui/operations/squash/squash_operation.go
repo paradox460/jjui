@@ -20,6 +20,7 @@ var _ common.Focusable = (*Operation)(nil)
 type Operation struct {
 	context     *context.MainContext
 	from        jj.SelectedRevisions
+	files       []string
 	current     *jj.Commit
 	keyMap      config.KeyMappings[key.Binding]
 	keepEmptied bool
@@ -55,7 +56,7 @@ func (s *Operation) View() string {
 func (s *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, s.keyMap.Apply):
-		return tea.Batch(common.Close, s.context.RunInteractiveCommand(jj.Squash(s.from, s.current.GetChangeId(), s.keepEmptied, s.interactive), common.RefreshAndSelect(s.current.GetChangeId())))
+		return tea.Batch(common.Close, s.context.RunInteractiveCommand(jj.Squash(s.from, s.current.GetChangeId(), s.files, s.keepEmptied, s.interactive), common.RefreshAndSelect(s.current.GetChangeId())))
 	case key.Matches(msg, s.keyMap.Cancel):
 		return common.Close
 	case key.Matches(msg, s.keyMap.Squash.KeepEmptied):
@@ -110,16 +111,28 @@ func (s *Operation) FullHelp() [][]key.Binding {
 	return [][]key.Binding{s.ShortHelp()}
 }
 
-func NewOperation(context *context.MainContext, from jj.SelectedRevisions) *Operation {
+type Option func(*Operation)
+
+func WithFiles(files []string) Option {
+	return func(op *Operation) {
+		op.files = files
+	}
+}
+
+func NewOperation(context *context.MainContext, from jj.SelectedRevisions, opts ...Option) *Operation {
 	styles := styles{
 		dimmed:       common.DefaultPalette.Get("squash dimmed"),
 		sourceMarker: common.DefaultPalette.Get("squash source_marker"),
 		targetMarker: common.DefaultPalette.Get("squash target_marker"),
 	}
-	return &Operation{
+	o := &Operation{
 		context: context,
 		keyMap:  config.Current.GetKeyMap(),
 		from:    from,
 		styles:  styles,
 	}
+	for _, opt := range opts {
+		opt(o)
+	}
+	return o
 }

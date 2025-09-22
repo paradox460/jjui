@@ -102,24 +102,3 @@ func TestModel_Update_HandlesMovedFiles(t *testing.T) {
 	tm.Quit()
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }
-
-func TestModel_Update_SquashChangesMode(t *testing.T) {
-	commandRunner := test.NewTestCommandRunner(t)
-	commandRunner.Expect(jj.Snapshot())
-	commandRunner.Expect(jj.Status(Revision)).SetOutput([]byte(StatusOutput))
-	defer commandRunner.Verify()
-
-	operation := NewOperation(test.NewTestContext(commandRunner), Commit, 10)
-	tm := teatest.NewTestModel(t, operation)
-	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
-		return bytes.Contains(bts, []byte("file.txt"))
-	})
-
-	tm.Send(tea.KeyMsg{Type: tea.KeySpace})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("S")})
-	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
-		return operation.mode == squashTargetMode
-	})
-	tm.Quit()
-	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
-}

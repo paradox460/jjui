@@ -43,9 +43,10 @@ type (
 		Commit       *jj.Commit
 		RawFileOut   []byte // raw output from `jj file list`
 	}
-	ShowPreview     bool
-	JumpToParentMsg struct {
-		Commit *jj.Commit
+	ShowPreview             bool
+	StartSquashOperationMsg struct {
+		Revision *jj.Commit
+		Files    []string
 	}
 )
 
@@ -104,15 +105,6 @@ func FileSearch(revset string, preview bool, commit *jj.Commit, rawFileOut []byt
 			Revset:       revset,
 			PreviewShown: preview,
 		}
-	}
-}
-
-func JumpToParent(commit *jj.Commit) tea.Cmd {
-	return func() tea.Msg {
-		if commit == nil {
-			return nil
-		}
-		return JumpToParentMsg{Commit: commit}
 	}
 }
 

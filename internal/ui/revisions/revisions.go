@@ -327,12 +327,8 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 			})
 		}
 		return m, tea.Batch(cmds...)
-	case common.JumpToParentMsg:
-		if msg.Commit == nil {
-			return m, nil
-		}
-		m.jumpToParent(jj.NewSelectedRevisions(msg.Commit))
-		return m, m.updateSelection()
+	case common.StartSquashOperationMsg:
+		return m.startSquash(jj.NewSelectedRevisions(msg.Revision), msg.Files)
 	}
 
 	if len(m.rows) == 0 {
@@ -445,16 +441,7 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 			case key.Matches(msg, m.keymap.Refresh):
 				cmd = common.Refresh
 			case key.Matches(msg, m.keymap.Squash.Mode):
-				selectedRevisions := m.SelectedRevisions()
-				parent, _ := m.context.RunCommandImmediate(jj.GetParent(selectedRevisions))
-				parentIdx := m.selectRevision(string(parent))
-				if parentIdx != -1 {
-					m.cursor = parentIdx
-				} else if m.cursor < len(m.rows)-1 {
-					m.cursor++
-				}
-				m.op = squash.NewOperation(m.context, selectedRevisions)
-				return m, m.op.Init()
+				return m.startSquash(m.SelectedRevisions(), nil)
 			case key.Matches(msg, m.keymap.Revert.Mode):
 				m.op = revert.NewOperation(m.context, m.SelectedRevisions(), revert.TargetDestination)
 				return m, m.op.Init()
@@ -472,6 +459,18 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 	}
 
 	return m, cmd
+}
+
+func (m *Model) startSquash(selectedRevisions jj.SelectedRevisions, files []string) (*Model, tea.Cmd) {
+	parent, _ := m.context.RunCommandImmediate(jj.GetParent(selectedRevisions))
+	parentIdx := m.selectRevision(string(parent))
+	if parentIdx != -1 {
+		m.cursor = parentIdx
+	} else if m.cursor < len(m.rows)-1 {
+		m.cursor++
+	}
+	m.op = squash.NewOperation(m.context, selectedRevisions, squash.WithFiles(files))
+	return m, m.op.Init()
 }
 
 func (m *Model) updateSelection() tea.Cmd {
