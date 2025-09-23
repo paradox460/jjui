@@ -64,8 +64,8 @@ func (s *SetBookmarkOperation) IsFocused() bool {
 	return true
 }
 
-func (s *SetBookmarkOperation) Render(_ *jj.Commit, pos operations.RenderPosition) string {
-	if pos != operations.RenderBeforeCommitId {
+func (s *SetBookmarkOperation) Render(commit *jj.Commit, pos operations.RenderPosition) string {
+	if pos != operations.RenderBeforeCommitId || commit.GetChangeId() != s.revision {
 		return ""
 	}
 	return s.name.View() + s.name.TextStyle.Render(" ")
