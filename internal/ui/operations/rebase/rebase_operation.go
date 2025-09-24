@@ -67,6 +67,7 @@ type Operation struct {
 	keyMap         config.KeyMappings[key.Binding]
 	highlightedIds []string
 	styles         styles
+	SkipEmptied    bool
 }
 
 func (r *Operation) IsFocused() bool {
@@ -105,14 +106,20 @@ func (r *Operation) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, r.keyMap.Rebase.Insert):
 		r.Target = TargetInsert
 		r.InsertStart = r.To
+	case key.Matches(msg, r.keyMap.Rebase.Insert):
+		r.Target = TargetInsert
+		r.InsertStart = r.To
+	case key.Matches(msg, r.keyMap.Rebase.SkipEmptied):
+		r.SkipEmptied = !r.SkipEmptied
 	case key.Matches(msg, r.keyMap.Apply, r.keyMap.ForceApply):
 		ignoreImmutable := key.Matches(msg, r.keyMap.ForceApply)
+		skipEmptied := r.SkipEmptied
 		if r.Target == TargetInsert {
-			return r.context.RunCommand(jj.RebaseInsert(r.From, r.InsertStart.GetChangeId(), r.To.GetChangeId(), ignoreImmutable), common.RefreshAndSelect(r.From.Last()), common.Close)
+			return r.context.RunCommand(jj.RebaseInsert(r.From, r.InsertStart.GetChangeId(), r.To.GetChangeId(), skipEmptied, ignoreImmutable), common.RefreshAndSelect(r.From.Last()), common.Close)
 		} else {
 			source := sourceToFlags[r.Source]
 			target := targetToFlags[r.Target]
-			return r.context.RunCommand(jj.Rebase(r.From, r.To.GetChangeId(), source, target, ignoreImmutable), common.RefreshAndSelect(r.From.Last()), common.Close)
+			return r.context.RunCommand(jj.Rebase(r.From, r.To.GetChangeId(), source, target, skipEmptied, ignoreImmutable), common.RefreshAndSelect(r.From.Last()), common.Close)
 		}
 	case key.Matches(msg, r.keyMap.Cancel):
 		return common.Close
@@ -148,6 +155,7 @@ func (r *Operation) ShortHelp() []key.Binding {
 		r.keyMap.Rebase.After,
 		r.keyMap.Rebase.Onto,
 		r.keyMap.Rebase.Insert,
+		r.keyMap.Rebase.SkipEmptied,
 	}
 }
 
@@ -158,16 +166,20 @@ func (r *Operation) FullHelp() [][]key.Binding {
 func (r *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) string {
 	if pos == operations.RenderBeforeChangeId {
 		changeId := commit.GetChangeId()
+		marker := ""
 		if slices.Contains(r.highlightedIds, changeId) {
-			return r.styles.sourceMarker.Render("<< move >>")
+			marker = "<< move >>"
 		}
 		if r.Target == TargetInsert && r.InsertStart.GetChangeId() == commit.GetChangeId() {
-			return r.styles.sourceMarker.Render("<< after this >>")
+			marker = "<< after this >>"
 		}
 		if r.Target == TargetInsert && r.To.GetChangeId() == commit.GetChangeId() {
-			return r.styles.sourceMarker.Render("<< before this >>")
+			marker = "<< before this >>"
 		}
-		return ""
+		if r.SkipEmptied && marker != "" {
+			marker += " (skip emptied)"
+		}
+		return r.styles.sourceMarker.Render(marker)
 	}
 	expectedPos := operations.RenderPositionBefore
 	if r.Target == TargetBefore || r.Target == TargetInsert {

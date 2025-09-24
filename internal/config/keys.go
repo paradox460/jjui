@@ -54,14 +54,15 @@ func Convert(m KeyMappings[keys]) KeyMappings[key.Binding] {
 			Insert: key.NewBinding(key.WithKeys(m.Revert.Insert...), key.WithHelp(JoinKeys(m.Revert.Insert), "insert between")),
 		},
 		Rebase: rebaseModeKeys[key.Binding]{
-			Mode:     key.NewBinding(key.WithKeys(m.Rebase.Mode...), key.WithHelp(JoinKeys(m.Rebase.Mode), "rebase")),
-			Revision: key.NewBinding(key.WithKeys(m.Rebase.Revision...), key.WithHelp(JoinKeys(m.Rebase.Revision), "revision")),
-			Source:   key.NewBinding(key.WithKeys(m.Rebase.Source...), key.WithHelp(JoinKeys(m.Rebase.Source), "source")),
-			Branch:   key.NewBinding(key.WithKeys(m.Rebase.Branch...), key.WithHelp(JoinKeys(m.Rebase.Branch), "branch")),
-			After:    key.NewBinding(key.WithKeys(m.Rebase.After...), key.WithHelp(JoinKeys(m.Rebase.After), "insert after")),
-			Before:   key.NewBinding(key.WithKeys(m.Rebase.Before...), key.WithHelp(JoinKeys(m.Rebase.Before), "insert before")),
-			Onto:     key.NewBinding(key.WithKeys(m.Rebase.Onto...), key.WithHelp(JoinKeys(m.Rebase.Onto), "onto")),
-			Insert:   key.NewBinding(key.WithKeys(m.Rebase.Insert...), key.WithHelp(JoinKeys(m.Rebase.Insert), "insert between")),
+			Mode:        key.NewBinding(key.WithKeys(m.Rebase.Mode...), key.WithHelp(JoinKeys(m.Rebase.Mode), "rebase")),
+			Revision:    key.NewBinding(key.WithKeys(m.Rebase.Revision...), key.WithHelp(JoinKeys(m.Rebase.Revision), "revision")),
+			Source:      key.NewBinding(key.WithKeys(m.Rebase.Source...), key.WithHelp(JoinKeys(m.Rebase.Source), "source")),
+			Branch:      key.NewBinding(key.WithKeys(m.Rebase.Branch...), key.WithHelp(JoinKeys(m.Rebase.Branch), "branch")),
+			After:       key.NewBinding(key.WithKeys(m.Rebase.After...), key.WithHelp(JoinKeys(m.Rebase.After), "insert after")),
+			Before:      key.NewBinding(key.WithKeys(m.Rebase.Before...), key.WithHelp(JoinKeys(m.Rebase.Before), "insert before")),
+			Onto:        key.NewBinding(key.WithKeys(m.Rebase.Onto...), key.WithHelp(JoinKeys(m.Rebase.Onto), "onto")),
+			Insert:      key.NewBinding(key.WithKeys(m.Rebase.Insert...), key.WithHelp(JoinKeys(m.Rebase.Insert), "insert between")),
+			SkipEmptied: key.NewBinding(key.WithKeys(m.Rebase.SkipEmptied...), key.WithHelp(JoinKeys(m.Rebase.SkipEmptied), "skip emptied")),
 		},
 		Duplicate: duplicateModeKeys[key.Binding]{
 			Mode:   key.NewBinding(key.WithKeys(m.Duplicate.Mode...), key.WithHelp(JoinKeys(m.Duplicate.Mode), "duplicate")),
@@ -223,14 +224,15 @@ type revertModeKeys[T any] struct {
 }
 
 type rebaseModeKeys[T any] struct {
-	Mode     T `toml:"mode"`
-	Revision T `toml:"revision"`
-	Source   T `toml:"source"`
-	Branch   T `toml:"branch"`
-	After    T `toml:"after"`
-	Before   T `toml:"before"`
-	Onto     T `toml:"onto"`
-	Insert   T `toml:"insert"`
+	Mode        T `toml:"mode"`
+	Revision    T `toml:"revision"`
+	Source      T `toml:"source"`
+	Branch      T `toml:"branch"`
+	After       T `toml:"after"`
+	Before      T `toml:"before"`
+	Onto        T `toml:"onto"`
+	Insert      T `toml:"insert"`
+	SkipEmptied T `toml:"skip_emptied"`
 }
 
 type duplicateModeKeys[T any] struct {

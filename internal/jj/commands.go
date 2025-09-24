@@ -240,23 +240,29 @@ func Show(revision string, extraArgs ...string) CommandArgs {
 	return args
 }
 
-func Rebase(from SelectedRevisions, to string, source string, target string, ignoreImmutable bool) CommandArgs {
+func Rebase(from SelectedRevisions, to string, source string, target string, skipEmptied bool, ignoreImmutable bool) CommandArgs {
 	args := []string{"rebase"}
 	args = append(args, from.AsPrefixedArgs(source)...)
 	args = append(args, target, to)
 	if ignoreImmutable {
 		args = append(args, "--ignore-immutable")
 	}
+	if skipEmptied {
+		args = append(args, "--skip-emptied")
+	}
 	return args
 }
 
-func RebaseInsert(from SelectedRevisions, insertAfter string, insertBefore string, ignoreImmutable bool) CommandArgs {
+func RebaseInsert(from SelectedRevisions, insertAfter string, insertBefore string, skipEmptied bool, ignoreImmutable bool) CommandArgs {
 	args := []string{"rebase"}
 	args = append(args, from.AsArgs()...)
 	args = append(args, "--insert-before", insertBefore)
 	args = append(args, "--insert-after", insertAfter)
 	if ignoreImmutable {
 		args = append(args, "--ignore-immutable")
+	}
+	if skipEmptied {
+		args = append(args, "--skip-emptied")
 	}
 	return args
 }
