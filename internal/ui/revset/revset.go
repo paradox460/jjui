@@ -3,17 +3,30 @@ package revset
 import (
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/idursun/jjui/internal/config/script"
 	"github.com/idursun/jjui/internal/ui/common"
 	"github.com/idursun/jjui/internal/ui/common/autocompletion"
 	appContext "github.com/idursun/jjui/internal/ui/context"
+	"github.com/idursun/jjui/internal/ui/view"
 )
+
+var actionMap = map[string]common.Action{
+	"esc":   {Id: "revset.close", Args: map[string]any{"clear": false}, Switch: common.ScopeRevisions},
+	"tab":   {Id: "revset.complete", Args: nil},
+	"enter": {Id: "revset.accept", Switch: common.ScopeRevisions},
+}
 
 type EditRevSetMsg struct {
 	Clear bool
 }
+
+var _ common.Editable = (*Model)(nil)
+var _ view.IHasActionMap = (*Model)(nil)
+var _ help.KeyMap = (*Model)(nil)
 
 type Model struct {
 	*common.Sizeable
@@ -27,6 +40,22 @@ type Model struct {
 	MaxHistoryItems int
 	context         *appContext.MainContext
 	styles          styles
+}
+
+func (m *Model) ShortHelp() []key.Binding {
+	return m.keymap.ShortHelp()
+}
+
+func (m *Model) FullHelp() [][]key.Binding {
+	return [][]key.Binding{m.keymap.ShortHelp()}
+}
+
+func (m *Model) GetActionMap() map[string]common.Action {
+	return actionMap
+}
+
+func (m *Model) IsEditing() bool {
+	return m.Editing
 }
 
 type styles struct {
@@ -112,8 +141,46 @@ func (m *Model) SetHistory(history []string) {
 	m.historyActive = false
 }
 
-func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if msg, ok := msg.(script.ResumeScriptExecutionMsg); ok {
+		switch step := msg.Execution.Current().(type) {
+		case *script.UIStep:
+			if step.UI.Action == "revset.set" {
+				return m, tea.Sequence(common.UpdateRevSet(step.UI.Params["revset"].(string)), msg.Execution.Resume)
+			}
+		}
+	}
+
 	switch msg := msg.(type) {
+	case common.InvokeActionMsg:
+		switch msg.Action.Id {
+		case "revset.close":
+			if m.Editing {
+				m.Editing = false
+				m.autoComplete.Blur()
+				return m, common.Close
+			}
+			return m, nil
+		case "revset.accept":
+			if m.Editing {
+				m.Editing = false
+				m.autoComplete.Blur()
+				value := m.autoComplete.Value()
+				return m, tea.Batch(common.Close, common.UpdateRevSet(value))
+			}
+			return m, nil
+		case "revset.edit":
+			shouldClear := msg.Action.Get("clear", false).(bool)
+			m.Editing = true
+			m.autoComplete.Focus()
+			if shouldClear {
+				m.autoComplete.SetValue("")
+			}
+			m.historyActive = false
+			m.historyIndex = -1
+			return m, m.autoComplete.Init()
+
+		}
 	case tea.KeyMsg:
 		if !m.Editing {
 			return m, nil
@@ -160,15 +227,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		if m.Editing {
 			m.Editing = false
 		}
-	case EditRevSetMsg:
-		m.Editing = true
-		m.autoComplete.Focus()
-		if msg.Clear {
-			m.autoComplete.SetValue("")
-		}
-		m.historyActive = false
-		m.historyIndex = -1
-		return m, m.autoComplete.Init()
 	}
 
 	var cmd tea.Cmd

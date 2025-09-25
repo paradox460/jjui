@@ -63,6 +63,7 @@ type MainContext struct {
 	DefaultRevset  string
 	CurrentRevset  string
 	Histories      *config.Histories
+	ScopeValues    map[string]string
 }
 
 func NewAppContext(location string) *MainContext {
@@ -70,8 +71,9 @@ func NewAppContext(location string) *MainContext {
 		CommandRunner: &MainCommandRunner{
 			Location: location,
 		},
-		Location:  location,
-		Histories: config.NewHistories(),
+		Location:    location,
+		Histories:   config.NewHistories(),
+		ScopeValues: make(map[string]string),
 	}
 
 	m.JJConfig = &config.JJConfig{}
@@ -79,6 +81,12 @@ func NewAppContext(location string) *MainContext {
 		m.JJConfig, _ = config.DefaultConfig(output)
 	}
 	return m
+}
+
+func (ctx *MainContext) UpdateScopeValues(values map[string]string) {
+	for k, v := range values {
+		ctx.ScopeValues[k] = v
+	}
 }
 
 func (ctx *MainContext) ClearCheckedItems(ofType reflect.Type) {

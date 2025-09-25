@@ -8,7 +8,9 @@ import (
 )
 
 type (
-	CloseViewMsg   struct{}
+	CloseViewMsg struct {
+		Cancelled bool
+	}
 	ToggleHelpMsg  struct{}
 	AutoRefreshMsg struct{}
 	RefreshMsg     struct {
@@ -43,11 +45,7 @@ type (
 		Commit       *jj.Commit
 		RawFileOut   []byte // raw output from `jj file list`
 	}
-	ShowPreview             bool
-	StartSquashOperationMsg struct {
-		Revision *jj.Commit
-		Files    []string
-	}
+	ShowPreview bool
 )
 
 type State int
@@ -60,6 +58,10 @@ const (
 
 func Close() tea.Msg {
 	return CloseViewMsg{}
+}
+
+func CloseAndCancel() tea.Msg {
+	return CloseViewMsg{Cancelled: true}
 }
 
 func SelectionChanged() tea.Msg {
