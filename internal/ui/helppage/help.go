@@ -122,6 +122,7 @@ func (h *Model) View() string {
 		h.printKeyBinding(h.keyMap.Bookmark.Set),
 		h.printKeyBinding(h.keyMap.InlineDescribe.Mode),
 		h.printKeyBinding(h.keyMap.SetParents),
+		h.printKeyBinding(h.keyMap.Copy.Mode),
 	)
 
 	var middle []string

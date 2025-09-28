@@ -107,6 +107,12 @@ limit = 0
     down = ["down"]
     accept = ["enter"]
     edit = ["alt+e"]
+  [keys.copy]
+    mode = ["ctrl+c"]
+    change_id = ["c"]
+    commit_id = ["i"]
+    description = ["d"]
+    full_info = ["f"]
 
 
 [ui]

@@ -126,6 +126,13 @@ func Convert(m KeyMappings[keys]) KeyMappings[key.Binding] {
 			Accept: key.NewBinding(key.WithKeys(m.FileSearch.Accept...), key.WithHelp(JoinKeys(m.FileSearch.Accept), "file revset")),
 			Edit:   key.NewBinding(key.WithKeys(m.FileSearch.Edit...), key.WithHelp(JoinKeys(m.FileSearch.Edit), "edit file")),
 		},
+		Copy: copyModeKeys[key.Binding]{
+			Mode:        key.NewBinding(key.WithKeys(m.Copy.Mode...), key.WithHelp(JoinKeys(m.Copy.Mode), "copy")),
+			ChangeId:    key.NewBinding(key.WithKeys(m.Copy.ChangeId...), key.WithHelp(JoinKeys(m.Copy.ChangeId), "copy change ID")),
+			CommitId:    key.NewBinding(key.WithKeys(m.Copy.CommitId...), key.WithHelp(JoinKeys(m.Copy.CommitId), "copy commit ID")),
+			Description: key.NewBinding(key.WithKeys(m.Copy.Description...), key.WithHelp(JoinKeys(m.Copy.Description), "copy description")),
+			FullInfo:    key.NewBinding(key.WithKeys(m.Copy.FullInfo...), key.WithHelp(JoinKeys(m.Copy.FullInfo), "copy full info")),
+		},
 	}
 }
 
@@ -198,6 +205,7 @@ type KeyMappings[T any] struct {
 	Git               gitModeKeys[T]            `toml:"git"`
 	OpLog             opLogModeKeys[T]          `toml:"oplog"`
 	FileSearch        fileSearchKeys[T]         `toml:"file_search"`
+	Copy              copyModeKeys[T]           `toml:"copy"`
 }
 
 type bookmarkModeKeys[T any] struct {
@@ -295,4 +303,12 @@ type fileSearchKeys[T any] struct {
 	Down   T `toml:"down"`
 	Accept T `toml:"accept"`
 	Edit   T `toml:"edit"`
+}
+
+type copyModeKeys[T any] struct {
+	Mode        T `toml:"mode"`
+	ChangeId    T `toml:"change_id"`
+	CommitId    T `toml:"commit_id"`
+	Description T `toml:"description"`
+	FullInfo    T `toml:"full_info"`
 }

@@ -30,6 +30,7 @@ import (
 	"github.com/idursun/jjui/internal/ui/operations"
 	"github.com/idursun/jjui/internal/ui/operations/abandon"
 	"github.com/idursun/jjui/internal/ui/operations/bookmark"
+	"github.com/idursun/jjui/internal/ui/operations/copy"
 	"github.com/idursun/jjui/internal/ui/operations/details"
 	"github.com/idursun/jjui/internal/ui/operations/evolog"
 	"github.com/idursun/jjui/internal/ui/operations/rebase"
@@ -374,6 +375,16 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 			return m, m.updateSelection()
 		case key.Matches(msg, m.keymap.AceJump):
+			// Check if an operation is active and focused first
+			if op, ok := m.op.(common.Focusable); ok && op.IsFocused() {
+				// Let the active operation handle the key first
+				m.op, cmd = m.op.Update(msg)
+				if cmd != nil {
+					// If the operation handled the key, use its command
+					break
+				}
+				// If the operation didn't handle the key, fall through to AceJump
+			}
 			op := ace_jump.NewOperation(m, func(index int) parser.Row {
 				return m.rows[index]
 			}, m.renderer.FirstRowIndex, m.renderer.LastRowIndex)
@@ -455,6 +466,9 @@ func (m *Model) internalUpdate(msg tea.Msg) (*Model, tea.Cmd) {
 				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.Duplicate.Mode):
 				m.op = duplicate.NewOperation(m.context, m.SelectedRevisions(), duplicate.TargetDestination)
+				return m, m.op.Init()
+			case key.Matches(msg, m.keymap.Copy.Mode):
+				m.op = copy.NewOperation(m.context, m.SelectedRevision())
 				return m, m.op.Init()
 			case key.Matches(msg, m.keymap.SetParents):
 				m.op = set_parents.NewModel(m.context, m.SelectedRevision())
